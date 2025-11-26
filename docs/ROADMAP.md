@@ -2,7 +2,7 @@
 
 This document outlines planned features and improvements for DevProc, organized by priority and complexity.
 
-## Current State (v0.4.x)
+## Current State (v0.5.x)
 
 - [x] Service management (start, stop, restart)
 - [x] Dependency ordering with healthchecks
@@ -15,6 +15,7 @@ This document outlines planned features and improvements for DevProc, organized 
 - [x] Service details panel
 - [x] Animated spinners for starting/stopping
 - [x] Restart count badges
+- [x] Resource monitoring (CPU/memory per service)
 
 ---
 
@@ -51,19 +52,19 @@ This document outlines planned features and improvements for DevProc, organized 
 
 ---
 
-## Medium Term (v0.5.x)
+## Completed (v0.5.x)
 
 ### Resource Monitoring
 
-**Priority: High | Complexity: High**
+- [x] Real-time CPU % and memory usage in service list
+- [x] Resource graph in log panel (toggle with `m`)
+- [x] History tracking with sparkline visualization
+- [x] Color-coded CPU (green/yellow/red based on usage)
+- [x] Implementation: Uses `ps` command on macOS/Linux
 
-Display CPU and memory usage per service.
+---
 
-- Real-time CPU % and memory usage in service list
-- Optional resource graph in log panel (toggle with `m`)
-- Alerts when thresholds exceeded
-- History tracking for trends
-- Implementation: Use `ps` or `/proc` on Linux, `ps` on macOS
+## Medium Term (v0.6.x)
 
 ### Notifications
 
@@ -274,7 +275,6 @@ Want to help build these features? Here's how:
 
 ### Help Wanted
 
-- Resource monitoring (platform-specific code)
 - Docker API integration
 - Kubernetes support
 
@@ -282,7 +282,14 @@ Want to help build these features? Here's how:
 
 ## Changelog
 
-### v0.4.0 (Current)
+### v0.5.0 (Current)
+
+- Added resource monitoring (CPU/memory per service)
+- Real-time CPU % and memory usage displayed in service list
+- Resource graph view with sparkline visualization (toggle with `m`)
+- Color-coded CPU usage indicators
+
+### v0.4.0
 
 - Added log search with regex support
 - Added search match highlighting

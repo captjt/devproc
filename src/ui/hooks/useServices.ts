@@ -50,12 +50,19 @@ export function useServices(manager: ProcessManager): UseServicesReturn {
       setServices(manager.getAllStates());
     };
 
+    // Listen for resource updates to refresh service states
+    const handleResourcesUpdated = () => {
+      setServices(manager.getAllStates());
+    };
+
     manager.on("state-change", handleStateChange);
     manager.on("config-reloaded", handleConfigReload);
+    manager.on("resources-updated", handleResourcesUpdated);
 
     onCleanup(() => {
       manager.off("state-change", handleStateChange);
       manager.off("config-reloaded", handleConfigReload);
+      manager.off("resources-updated", handleResourcesUpdated);
     });
   });
 

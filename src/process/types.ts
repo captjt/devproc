@@ -1,4 +1,5 @@
 import type { Subprocess } from "bun";
+import type { ResourceStats } from "./resources";
 
 /**
  * Service lifecycle status
@@ -25,6 +26,8 @@ export interface ServiceState {
   port?: number;
   error?: string;
   restartCount: number;
+  /** Current resource usage (CPU, memory) */
+  resources?: ResourceStats;
 }
 
 /**

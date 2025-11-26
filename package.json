@@ -33,9 +33,11 @@
     "build": "bun run scripts/build.ts",
     "build:all": "bun run scripts/build.ts --all",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prettier:write": "prettier --write ."
   },
   "devDependencies": {
+    "prettier": "3.6.2",
     "@types/bun": "latest"
   },
   "peerDependencies": {
@@ -46,5 +48,9 @@
     "@opentui/solid": "^0.1.50",
     "yaml": "^2.8.1",
     "zod": "^4.1.13"
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 120
   }
 }

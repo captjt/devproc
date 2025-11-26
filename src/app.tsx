@@ -5,6 +5,7 @@ import type { ScrollBoxRenderable } from "@opentui/core";
 import type { ProcessManager } from "./process/manager";
 import { useServices, type DisplayItem } from "./ui/hooks/useServices";
 import { useLogs, type SearchMatch } from "./ui/hooks/useLogs";
+import { formatBytes, formatCpu, generateSparkline } from "./process/resources";
 
 interface AppProps {
   manager: ProcessManager;
@@ -99,6 +100,9 @@ export function App(props: AppProps) {
 
   // Service details panel
   const [showDetails, setShowDetails] = createSignal(false);
+
+  // Resource graph view
+  const [showResourceGraph, setShowResourceGraph] = createSignal(false);
 
   // Spinner animation state
   const [spinnerFrame, setSpinnerFrame] = createSignal(0);
@@ -569,6 +573,12 @@ export function App(props: AppProps) {
           setShowDetails(true);
           event.preventDefault();
           break;
+
+        // Resource graph toggle
+        case "m":
+          setShowResourceGraph((prev) => !prev);
+          event.preventDefault();
+          break;
       }
     },
   );
@@ -633,6 +643,9 @@ export function App(props: AppProps) {
                       const indent = serviceItem.group ? "  " : "";
                       const restartBadge =
                         service.restartCount > 0 ? `↻${service.restartCount}` : "";
+                      const resources = service.resources;
+                      const isRunning =
+                        service.status === "running" || service.status === "healthy";
                       return (
                         <box height={1} paddingLeft={1} paddingRight={1} flexDirection="row">
                           <text>{indent}</text>
@@ -650,6 +663,14 @@ export function App(props: AppProps) {
                           <Show when={restartBadge}>
                             <text fg="yellow">{restartBadge} </text>
                           </Show>
+                          <Show when={isRunning && resources}>
+                            <text fg={resources!.cpu > 80 ? "red" : resources!.cpu > 50 ? "yellow" : "cyan"}>
+                              {formatCpu(resources!.cpu).padStart(5)}
+                            </text>
+                            <text> </text>
+                            <text fg="cyan">{formatBytes(resources!.memory).padStart(7)}</text>
+                            <text> </text>
+                          </Show>
                           <text fg="gray">{service.port ? `:${service.port}` : ""}</text>
                           <text> </text>
                           <text fg="gray">{formatUptime(service.startedAt)}</text>
@@ -666,28 +687,92 @@ export function App(props: AppProps) {
         {/* Log panel */}
         <box flexGrow={1} flexDirection="column" borderStyle="rounded" borderColor="gray">
           <box height={1} paddingLeft={1} flexDirection="row">
-            <text fg="cyan" attributes={TextAttributes.BOLD}>
-              Logs{" "}
-              {viewMode() === "single" && selectedService()
-                ? `(${selectedService()!.name})`
-                : "(all)"}
-            </text>
+            <Show
+              when={showResourceGraph()}
+              fallback={
+                <text fg="cyan" attributes={TextAttributes.BOLD}>
+                  Logs{" "}
+                  {viewMode() === "single" && selectedService()
+                    ? `(${selectedService()!.name})`
+                    : "(all)"}
+                </text>
+              }
+            >
+              <text fg="cyan" attributes={TextAttributes.BOLD}>
+                Resources{" "}
+                {selectedService() ? `(${selectedService()!.name})` : ""}
+              </text>
+            </Show>
             <box flexGrow={1} />
-            <Show when={isSearchActive()}>
+            <Show when={!showResourceGraph() && isSearchActive()}>
               <text fg="yellow">
                 /{searchQuery()} [{currentMatchIndex() + 1}/{searchMatches().length}]{" "}
               </text>
             </Show>
-            <Show when={searchMode()}>
+            <Show when={!showResourceGraph() && searchMode()}>
               <text fg="cyan">/{searchInput()}_</text>
             </Show>
-            <Show when={!searchMode() && !following() && scrollInfo().total > 0}>
+            <Show when={!showResourceGraph() && !searchMode() && !following() && scrollInfo().total > 0}>
               <text fg="gray">
                 {scrollInfo().current}/{scrollInfo().total}{" "}
               </text>
             </Show>
-            <text fg={following() ? "green" : "gray"}>{following() ? "[follow]" : "[scroll]"}</text>
+            <Show when={!showResourceGraph()}>
+              <text fg={following() ? "green" : "gray"}>{following() ? "[follow]" : "[scroll]"}</text>
+            </Show>
+            <Show when={showResourceGraph()}>
+              <text fg="cyan">[m] logs</text>
+            </Show>
           </box>
+
+          {/* Resource graph view */}
+          <Show when={showResourceGraph() && selectedService()}>
+            {(() => {
+              const service = selectedService()!;
+              const history = props.manager.getResourceHistory(service.name);
+              const cpuValues = history.map((h) => h.cpu);
+              const memValues = history.map((h) => h.memory / (1024 * 1024)); // Convert to MB for display
+              const resources = service.resources;
+
+              return (
+                <box flexDirection="column" padding={1} flexGrow={1}>
+                  <text fg="yellow" attributes={TextAttributes.BOLD}>
+                    CPU Usage
+                  </text>
+                  <box height={1} flexDirection="row">
+                    <text fg="cyan">{generateSparkline(cpuValues, 50)}</text>
+                    <text> </text>
+                    <text fg={resources && resources.cpu > 80 ? "red" : resources && resources.cpu > 50 ? "yellow" : "green"}>
+                      {resources ? formatCpu(resources.cpu) : "N/A"}
+                    </text>
+                  </box>
+                  <text> </text>
+                  <text fg="yellow" attributes={TextAttributes.BOLD}>
+                    Memory Usage
+                  </text>
+                  <box height={1} flexDirection="row">
+                    <text fg="magenta">{generateSparkline(memValues, 50)}</text>
+                    <text> </text>
+                    <text fg="green">{resources ? formatBytes(resources.memory) : "N/A"}</text>
+                  </box>
+                  <text> </text>
+                  <text fg="gray">
+                    History: {history.length} samples ({history.length}s)
+                  </text>
+                  <Show when={resources}>
+                    <text fg="gray">
+                      Memory %: {resources!.memoryPercent.toFixed(1)}% of system
+                    </text>
+                  </Show>
+                  <box flexGrow={1} />
+                  <text fg="gray">Press [m] to return to logs</text>
+                </box>
+              );
+            })()}
+          </Show>
+
+          {/* Logs view */}
+          <Show when={!showResourceGraph()}>
           <scrollbox
             ref={(el: ScrollBoxRenderable) => (scrollboxRef = el)}
             flexGrow={1}
@@ -785,6 +870,7 @@ export function App(props: AppProps) {
               </For>
             </box>
           </scrollbox>
+          </Show>
         </box>
       </box>
 
@@ -803,6 +889,8 @@ export function App(props: AppProps) {
         <text>lear </text>
         <text fg="gray">[f]</text>
         <text>ollow </text>
+        <text fg="gray">[m]</text>
+        <text>onitor </text>
         <text fg="gray">| </text>
         <text fg="gray">[?]</text>
         <text>help </text>
@@ -834,7 +922,7 @@ export function App(props: AppProps) {
           <text>Space Toggle group | i Service info</text>
           <text> </text>
           <text fg="yellow">Logs</text>
-          <text>Tab Toggle view | c Clear | f Follow</text>
+          <text>Tab Toggle view | c Clear | f Follow | m Monitor</text>
           <text>g/G Top/bottom | PgUp/PgDn | Ctrl+u/d</text>
           <text>e Export service logs | E Export all logs</text>
           <text> </text>

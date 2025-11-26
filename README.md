@@ -14,6 +14,7 @@ A terminal UI application for managing your local development environment - hot 
 - **Log Search** - Search and filter logs with regex support and match highlighting
 - **Log Export** - Export logs to files for debugging or sharing
 - **Service Details** - View detailed service info including PID, env vars, and uptime
+- **Resource Monitoring** - Real-time CPU and memory usage per service with sparkline graphs
 - **Hot Config Reload** - Update your config without restarting DevProc
 - **Keyboard-Driven** - Fast navigation with vim-style keybindings
 
@@ -242,6 +243,7 @@ groups:
 | `Tab`           | Toggle single/all logs view  |
 | `c`             | Clear logs                   |
 | `f`             | Toggle follow mode           |
+| `m`             | Toggle resource monitor view |
 | `g` / `G`       | Scroll to top / bottom       |
 | `PgUp` / `PgDn` | Page up / down               |
 | `Ctrl+u/d`      | Half page up / down          |
