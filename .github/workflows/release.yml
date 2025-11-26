@@ -94,9 +94,10 @@ jobs:
           cd artifacts
           cat *.sha256 > checksums.txt
           cat checksums.txt
-          echo "darwin_arm64=$(grep darwin-arm64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
-          echo "darwin_x64=$(grep darwin-x64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
-          echo "linux_x64=$(grep linux-x64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          # Extract just the hash (first field) from each .sha256 file
+          echo "darwin_arm64=$(cat *darwin-arm64*.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "darwin_x64=$(cat *darwin-x64*.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "linux_x64=$(cat *linux-x64*.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

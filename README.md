@@ -17,7 +17,8 @@ A terminal UI application for managing your local development environment - hot 
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew tap captjt/devproc
+# To be remaned soon!
+brew tap captjt/devproc https://github.com/captjt/devproc
 brew install devproc
 ```
 
