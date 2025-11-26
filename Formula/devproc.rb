@@ -4,22 +4,22 @@
 class Devproc < Formula
   desc "Terminal UI for managing local development environments"
   homepage "https://github.com/captjt/devproc"
-  version "0.3.0"
+  version "0.3.1"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/captjt/devproc/releases/download/v0.3.0/devproc-v0.3.0-darwin-arm64.tar.gz"
-      sha256 "5585639def3de52513bdc61e3ac8bc9b968504707ba5a4186772fbaba38191da"
+      url "https://github.com/captjt/devproc/releases/download/v0.3.1/devproc-v0.3.1-darwin-arm64.tar.gz"
+      sha256 "33561d6f0c70edbfe116e2b4220ebafd5898b8272eb6a47314629d6ed983556d"
     else
-      url "https://github.com/captjt/devproc/releases/download/v0.3.0/devproc-v0.3.0-darwin-x64.tar.gz"
-      sha256 "fc0edec0d4ac43a3f1d2975bbc465da7b1554cf8bb40f1b6842952aef759a8af"
+      url "https://github.com/captjt/devproc/releases/download/v0.3.1/devproc-v0.3.1-darwin-x64.tar.gz"
+      sha256 "746d36ff502b8d20ab85649dadcc68f16532e1639794bc8b9dbbc1bcc948452f"
     end
   end
 
   on_linux do
-    url "https://github.com/captjt/devproc/releases/download/v0.3.0/devproc-v0.3.0-linux-x64.tar.gz"
-    sha256 "7d161ef05e8b4a254678c4199a287805e3f842c3f52a57e890ccaa95d78ff064"
+    url "https://github.com/captjt/devproc/releases/download/v0.3.1/devproc-v0.3.1-linux-x64.tar.gz"
+    sha256 "c0968461d31dad0fd5a36ae311037ed118bdde8a8da73a98ab2b0a365675d31e"
   end
 
   def install
