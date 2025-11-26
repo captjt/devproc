@@ -22,11 +22,11 @@ export interface UseLogsReturn {
   // Search functionality
   searchQuery: () => string;
   setSearchQuery: (query: string) => void;
-  searchMatches: () => SearchMatch[];
+  getSearchMatches: (logsToSearch: LogLine[]) => SearchMatch[];
   currentMatchIndex: () => number;
   setCurrentMatchIndex: (index: number) => void;
-  nextMatch: () => void;
-  prevMatch: () => void;
+  nextMatch: (totalMatches: number) => void;
+  prevMatch: (totalMatches: number) => void;
   clearSearch: () => void;
   isSearchActive: () => boolean;
   // Export functionality
@@ -123,13 +123,12 @@ export function useLogs(manager: ProcessManager, bufferSize = DEFAULT_BUFFER_SIZ
     );
   };
 
-  // Compute search matches
-  const searchMatches = createMemo((): SearchMatch[] => {
+  // Compute search matches for given logs
+  const getSearchMatches = (logsToSearch: LogLine[]): SearchMatch[] => {
     const query = searchQuery();
     if (!query) return [];
 
     const matches: SearchMatch[] = [];
-    const allLogs = logs();
 
     // Try as regex first, fall back to literal search
     let regex: RegExp;
@@ -140,7 +139,9 @@ export function useLogs(manager: ProcessManager, bufferSize = DEFAULT_BUFFER_SIZ
       regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
     }
 
-    allLogs.forEach((log, logIndex) => {
+    logsToSearch.forEach((log, logIndex) => {
+      // Reset regex lastIndex for each log line
+      regex.lastIndex = 0;
       let match;
       while ((match = regex.exec(log.content)) !== null) {
         matches.push({
@@ -152,22 +153,18 @@ export function useLogs(manager: ProcessManager, bufferSize = DEFAULT_BUFFER_SIZ
     });
 
     return matches;
-  });
+  };
 
   const isSearchActive = () => searchQuery().length > 0;
 
-  const nextMatch = () => {
-    const matches = searchMatches();
-    if (matches.length === 0) return;
-
-    setCurrentMatchIndex((prev) => (prev + 1) % matches.length);
+  const nextMatch = (totalMatches: number) => {
+    if (totalMatches === 0) return;
+    setCurrentMatchIndex((prev) => (prev + 1) % totalMatches);
   };
 
-  const prevMatch = () => {
-    const matches = searchMatches();
-    if (matches.length === 0) return;
-
-    setCurrentMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
+  const prevMatch = (totalMatches: number) => {
+    if (totalMatches === 0) return;
+    setCurrentMatchIndex((prev) => (prev - 1 + totalMatches) % totalMatches);
   };
 
   const clearSearch = () => {
@@ -218,7 +215,7 @@ export function useLogs(manager: ProcessManager, bufferSize = DEFAULT_BUFFER_SIZ
     // Search functionality
     searchQuery,
     setSearchQuery,
-    searchMatches,
+    getSearchMatches,
     currentMatchIndex,
     setCurrentMatchIndex,
     nextMatch,

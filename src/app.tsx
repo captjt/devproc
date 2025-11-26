@@ -75,7 +75,7 @@ export function App(props: AppProps) {
     filteredLogs,
     searchQuery,
     setSearchQuery,
-    searchMatches,
+    getSearchMatches,
     currentMatchIndex,
     setCurrentMatchIndex,
     nextMatch,
@@ -121,6 +121,28 @@ export function App(props: AppProps) {
     }
     return filteredLogs();
   };
+
+  // Compute search matches based on visible logs
+  const searchMatches = () => getSearchMatches(visibleLogs());
+
+  // Clear search when switching services or view mode
+  const [lastSelectedName, setLastSelectedName] = createSignal<string | null>(null);
+  const [lastViewMode, setLastViewMode] = createSignal<"single" | "all">("single");
+
+  createEffect(() => {
+    const currentName = selectedName();
+    const currentViewMode = viewMode();
+    const prevName = lastSelectedName();
+    const prevViewMode = lastViewMode();
+
+    // Clear search if service or view mode changed
+    if ((currentName !== prevName || currentViewMode !== prevViewMode) && isSearchActive()) {
+      clearSearch();
+    }
+
+    setLastSelectedName(currentName);
+    setLastViewMode(currentViewMode);
+  });
 
   // Update scroll info from scrollbox
   const updateScrollInfo = () => {
@@ -219,12 +241,14 @@ export function App(props: AppProps) {
     if (query) {
       setSearchQuery(query);
       setCurrentMatchIndex(0);
-      // Scroll to first match
-      const matches = searchMatches();
-      if (matches.length > 0 && scrollboxRef) {
-        scrollboxRef.scrollTo(matches[0]!.logIndex);
-        setFollowing(false);
-      }
+      // Scroll to first match after query is set
+      setTimeout(() => {
+        const matches = searchMatches();
+        if (matches.length > 0 && scrollboxRef) {
+          scrollboxRef.scrollTo(matches[0]!.logIndex);
+          setFollowing(false);
+        }
+      }, 0);
     }
     setSearchMode(false);
     setSearchInput("");
@@ -487,13 +511,16 @@ export function App(props: AppProps) {
         case "n":
           // Next search match
           if (isSearchActive()) {
-            nextMatch();
             const matches = searchMatches();
-            const idx = currentMatchIndex();
-            if (matches.length > 0 && scrollboxRef) {
-              scrollboxRef.scrollTo(matches[idx]!.logIndex);
-              setFollowing(false);
-            }
+            nextMatch(matches.length);
+            // Get updated index after nextMatch
+            setTimeout(() => {
+              const idx = currentMatchIndex();
+              if (matches.length > 0 && scrollboxRef && matches[idx]) {
+                scrollboxRef.scrollTo(matches[idx]!.logIndex);
+                setFollowing(false);
+              }
+            }, 0);
           }
           event.preventDefault();
           break;
@@ -502,13 +529,16 @@ export function App(props: AppProps) {
           if (event.shift) {
             // Previous match (N in vim)
             if (isSearchActive()) {
-              prevMatch();
               const matches = searchMatches();
-              const idx = currentMatchIndex();
-              if (matches.length > 0 && scrollboxRef) {
-                scrollboxRef.scrollTo(matches[idx]!.logIndex);
-                setFollowing(false);
-              }
+              prevMatch(matches.length);
+              // Get updated index after prevMatch
+              setTimeout(() => {
+                const idx = currentMatchIndex();
+                if (matches.length > 0 && scrollboxRef && matches[idx]) {
+                  scrollboxRef.scrollTo(matches[idx]!.logIndex);
+                  setFollowing(false);
+                }
+              }, 0);
             }
             event.preventDefault();
           }
@@ -667,10 +697,48 @@ export function App(props: AppProps) {
             <box flexDirection="column">
               <For each={visibleLogs()}>
                 {(log, logIdx) => {
-                  // Check if this log line has matches
-                  const matches = searchMatches().filter((m) => m.logIndex === logIdx());
-                  const currentMatch = searchMatches()[currentMatchIndex()];
-                  const isCurrentMatchLine = currentMatch?.logIndex === logIdx();
+                  // Reactive accessors for search matches - must be functions for SolidJS reactivity
+                  const matches = () => searchMatches().filter((m) => m.logIndex === logIdx());
+                  const currentMatch = () => searchMatches()[currentMatchIndex()];
+                  const isCurrentMatchLine = () => currentMatch()?.logIndex === logIdx();
+
+                  // Compute highlighted parts reactively
+                  const highlightedParts = () => {
+                    const m = matches();
+                    if (m.length === 0) return null;
+
+                    const content = log.content;
+                    const parts: { text: string; highlight: boolean; isCurrent: boolean }[] = [];
+                    let lastEnd = 0;
+                    const current = currentMatch();
+                    const isCurrentLine = isCurrentMatchLine();
+
+                    m.forEach((match) => {
+                      if (match.startIndex > lastEnd) {
+                        parts.push({
+                          text: content.slice(lastEnd, match.startIndex),
+                          highlight: false,
+                          isCurrent: false,
+                        });
+                      }
+                      parts.push({
+                        text: content.slice(match.startIndex, match.endIndex),
+                        highlight: true,
+                        isCurrent: isCurrentLine && match === current,
+                      });
+                      lastEnd = match.endIndex;
+                    });
+
+                    if (lastEnd < content.length) {
+                      parts.push({
+                        text: content.slice(lastEnd),
+                        highlight: false,
+                        isCurrent: false,
+                      });
+                    }
+
+                    return parts;
+                  };
 
                   return (
                     <box height={1} paddingLeft={1} flexDirection="row">
@@ -680,60 +748,36 @@ export function App(props: AppProps) {
                         <text fg="cyan">{log.service}</text>
                         <text fg="gray"> | </text>
                       </Show>
-                      <Show when={matches.length > 0} fallback={
-                        <text fg={log.stream === "stderr" ? "red" : undefined}>{log.content}</text>
-                      }>
-                        {/* Render with highlighted matches */}
-                        {(() => {
-                          const content = log.content;
-                          const parts: { text: string; highlight: boolean; isCurrent: boolean }[] = [];
-                          let lastEnd = 0;
-
-                          matches.forEach((match) => {
-                            if (match.startIndex > lastEnd) {
-                              parts.push({
-                                text: content.slice(lastEnd, match.startIndex),
-                                highlight: false,
-                                isCurrent: false,
-                              });
-                            }
-                            parts.push({
-                              text: content.slice(match.startIndex, match.endIndex),
-                              highlight: true,
-                              isCurrent: isCurrentMatchLine && match === currentMatch,
-                            });
-                            lastEnd = match.endIndex;
-                          });
-
-                          if (lastEnd < content.length) {
-                            parts.push({
-                              text: content.slice(lastEnd),
-                              highlight: false,
-                              isCurrent: false,
-                            });
-                          }
-
-                          return (
-                            <box flexDirection="row">
-                              <For each={parts}>
-                                {(part) => (
-                                  <Show
-                                    when={part.highlight}
-                                    fallback={
-                                      <text fg={log.stream === "stderr" ? "red" : undefined}>
-                                        {part.text}
-                                      </text>
-                                    }
-                                  >
-                                    <box backgroundColor={part.isCurrent ? "#ffff00" : "#555500"}>
-                                      <text fg="black">{part.text}</text>
-                                    </box>
-                                  </Show>
-                                )}
-                              </For>
-                            </box>
-                          );
-                        })()}
+                      <Show
+                        when={highlightedParts()}
+                        fallback={
+                          <text fg={log.stream === "stderr" ? "red" : undefined}>
+                            {log.content}
+                          </text>
+                        }
+                      >
+                        {(
+                          parts: () => { text: string; highlight: boolean; isCurrent: boolean }[],
+                        ) => (
+                          <box flexDirection="row">
+                            <For each={parts()}>
+                              {(part) => (
+                                <Show
+                                  when={part.highlight}
+                                  fallback={
+                                    <text fg={log.stream === "stderr" ? "red" : undefined}>
+                                      {part.text}
+                                    </text>
+                                  }
+                                >
+                                  <box backgroundColor={part.isCurrent ? "#ffff00" : "#555500"}>
+                                    <text fg="black">{part.text}</text>
+                                  </box>
+                                </Show>
+                              )}
+                            </For>
+                          </box>
+                        )}
                       </Show>
                     </box>
                   );
