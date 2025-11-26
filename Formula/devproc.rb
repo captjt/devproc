@@ -20,13 +20,8 @@ class Devproc < Formula
   end
 
   on_linux do
-    if Hardware::CPU.arm?
-      url "https://github.com/captjt/devproc/releases/download/v#{version}/devproc-v#{version}-linux-arm64.tar.gz"
-      sha256 "PLACEHOLDER_LINUX_ARM64_SHA256"
-    else
-      url "https://github.com/captjt/devproc/releases/download/v#{version}/devproc-v#{version}-linux-x64.tar.gz"
-      sha256 "PLACEHOLDER_LINUX_X64_SHA256"
-    end
+    url "https://github.com/captjt/devproc/releases/download/v#{version}/devproc-v#{version}-linux-x64.tar.gz"
+    sha256 "PLACEHOLDER_LINUX_X64_SHA256"
   end
 
   def install

@@ -19,8 +19,7 @@ jobs:
             target: darwin-x64
           - os: ubuntu-latest
             target: linux-x64
-          - os: ubuntu-latest
-            target: linux-arm64
+          # Note: linux-arm64 requires native ARM runner, skipped for now
 
     runs-on: ${{ matrix.os }}
 
@@ -96,7 +95,6 @@ jobs:
           echo "darwin_arm64=$(grep darwin-arm64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
           echo "darwin_x64=$(grep darwin-x64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
           echo "linux_x64=$(grep linux-x64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
-          echo "linux_arm64=$(grep linux-arm64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -118,7 +116,6 @@ jobs:
           DARWIN_ARM64="${{ steps.checksums.outputs.darwin_arm64 }}"
           DARWIN_X64="${{ steps.checksums.outputs.darwin_x64 }}"
           LINUX_X64="${{ steps.checksums.outputs.linux_x64 }}"
-          LINUX_ARM64="${{ steps.checksums.outputs.linux_arm64 }}"
 
           cat > Formula/devproc.rb << EOF
           # typed: false
@@ -141,13 +138,8 @@ jobs:
             end
 
             on_linux do
-              if Hardware::CPU.arm?
-                url "https://github.com/captjt/devproc/releases/download/v${VERSION}/devproc-v${VERSION}-linux-arm64.tar.gz"
-                sha256 "${LINUX_ARM64}"
-              else
-                url "https://github.com/captjt/devproc/releases/download/v${VERSION}/devproc-v${VERSION}-linux-x64.tar.gz"
-                sha256 "${LINUX_X64}"
-              end
+              url "https://github.com/captjt/devproc/releases/download/v${VERSION}/devproc-v${VERSION}-linux-x64.tar.gz"
+              sha256 "${LINUX_X64}"
             end
 
             def install
