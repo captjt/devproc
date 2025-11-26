@@ -5,6 +5,7 @@ import {
   type NormalizedConfig,
   type NormalizedService,
   type NormalizedHealthcheck,
+  type ServiceGroup,
   parseDuration,
 } from "./types";
 
@@ -73,10 +74,39 @@ export async function loadConfig(configPath?: string): Promise<NormalizedConfig>
     ...config.env,
   };
 
+  // Build group membership map (service -> group name)
+  const serviceToGroup = new Map<string, string>();
+  const groups = new Map<string, ServiceGroup>();
+
+  if (config.groups) {
+    for (const [groupName, serviceNames] of Object.entries(config.groups)) {
+      // Validate services exist
+      for (const serviceName of serviceNames) {
+        if (!config.services[serviceName]) {
+          throw new Error(`Group "${groupName}" references unknown service "${serviceName}"`);
+        }
+        if (serviceToGroup.has(serviceName)) {
+          throw new Error(
+            `Service "${serviceName}" is already in group "${serviceToGroup.get(serviceName)}", cannot add to "${groupName}"`,
+          );
+        }
+        serviceToGroup.set(serviceName, groupName);
+      }
+
+      groups.set(groupName, {
+        name: groupName,
+        services: serviceNames,
+        collapsed: false,
+      });
+    }
+  }
+
   // Normalize all services
   const services = new Map<string, NormalizedService>();
   for (const [name, serviceConfig] of Object.entries(config.services)) {
-    services.set(name, normalizeService(name, serviceConfig, configDir, globalEnv));
+    const normalized = normalizeService(name, serviceConfig, configDir, globalEnv);
+    normalized.group = serviceToGroup.get(name);
+    services.set(name, normalized);
   }
 
   // Validate dependencies exist
@@ -95,6 +125,8 @@ export async function loadConfig(configPath?: string): Promise<NormalizedConfig>
     name: config.name,
     env: globalEnv,
     services,
+    groups,
+    configPath: resolvedPath,
   };
 }
 
@@ -257,4 +289,53 @@ export function getDependencyOrder(services: Map<string, NormalizedService>): st
   }
 
   return order;
+}
+
+/**
+ * Get services grouped by their group, with ungrouped services at the end
+ * Returns an array of [groupName | null, services[]] tuples
+ */
+export function getGroupedServices(
+  config: NormalizedConfig,
+): Array<{ group: string | null; services: NormalizedService[] }> {
+  const result: Array<{ group: string | null; services: NormalizedService[] }> = [];
+  const ungrouped: NormalizedService[] = [];
+  const order = getDependencyOrder(config.services);
+
+  // First, organize by groups (maintaining dependency order within groups)
+  const groupServices = new Map<string, NormalizedService[]>();
+
+  for (const name of order) {
+    const service = config.services.get(name)!;
+    if (service.group) {
+      if (!groupServices.has(service.group)) {
+        groupServices.set(service.group, []);
+      }
+      groupServices.get(service.group)!.push(service);
+    } else {
+      ungrouped.push(service);
+    }
+  }
+
+  // Add groups in the order they appear in config
+  for (const [groupName] of config.groups) {
+    const services = groupServices.get(groupName);
+    if (services && services.length > 0) {
+      result.push({ group: groupName, services });
+    }
+  }
+
+  // Add ungrouped services at the end
+  if (ungrouped.length > 0) {
+    result.push({ group: null, services: ungrouped });
+  }
+
+  return result;
+}
+
+/**
+ * Reload config from disk (for hot reload)
+ */
+export async function reloadConfig(currentConfig: NormalizedConfig): Promise<NormalizedConfig> {
+  return loadConfig(currentConfig.configPath);
 }

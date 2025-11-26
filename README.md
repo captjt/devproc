@@ -7,9 +7,11 @@ A terminal UI application for managing your local development environment - hot 
 ## Features
 
 - **Unified Process Management** - Start, stop, and restart multiple services from a single TUI
+- **Service Groups** - Organize services into collapsible groups for better organization
 - **Dependency Ordering** - Services start in the correct order based on dependencies
 - **Health Checks** - Wait for services to be healthy before starting dependents
-- **Live Log Streaming** - View logs from all services or focus on one
+- **Live Log Streaming** - View logs from all services or focus on one with scrollback
+- **Hot Config Reload** - Update your config without restarting DevProc
 - **Keyboard-Driven** - Fast navigation with vim-style keybindings
 
 ## Installation
@@ -46,6 +48,14 @@ Download the latest binary from [GitHub Releases](https://github.com/captjt/devp
 
 ```yaml
 name: my-project
+
+# Optional: organize services into groups
+groups:
+  backend:
+    - api
+    - worker
+  frontend:
+    - web
 
 services:
   api:
@@ -88,6 +98,17 @@ env:
 
 # Load from .env file
 dotenv: .env.local
+
+# Organize services into groups (optional)
+groups:
+  infrastructure:
+    - postgres
+    - redis
+  backend:
+    - api
+    - worker
+  frontend:
+    - web
 
 services:
   postgres:
@@ -177,22 +198,62 @@ healthcheck:
   retries: 30
 ```
 
+### Service Groups
+
+Groups let you organize related services together in the UI. Services in a group are displayed under a collapsible header showing the group name and running count.
+
+```yaml
+groups:
+  backend:
+    - api
+    - worker
+  frontend:
+    - web
+    - storybook
+```
+
+- Groups appear in the order they're defined in the config
+- Services not in any group appear at the bottom
+- Press `Space` to collapse/expand a group when a service in that group is selected
+
 ## Keyboard Shortcuts
 
-| Key            | Action                      |
-| -------------- | --------------------------- |
-| `↑/↓` or `j/k` | Navigate services           |
-| `s`            | Start selected service      |
-| `x`            | Stop selected service       |
-| `r`            | Restart selected service    |
-| `a`            | Start all services          |
-| `X` (shift)    | Stop all services           |
-| `R` (shift)    | Restart all services        |
-| `Tab`          | Toggle single/all logs view |
-| `c`            | Clear logs                  |
-| `f`            | Toggle follow mode          |
-| `?`            | Show help                   |
-| `q`            | Quit (stops all services)   |
+### Services
+
+| Key            | Action                   |
+| -------------- | ------------------------ |
+| `↑/↓` or `j/k` | Navigate services        |
+| `s`            | Start selected service   |
+| `x`            | Stop selected service    |
+| `r`            | Restart selected service |
+| `a`            | Start all services       |
+| `X` (shift)    | Stop all services        |
+| `R` (shift)    | Restart all services     |
+| `Space`        | Toggle group collapsed   |
+
+### Logs
+
+| Key             | Action                      |
+| --------------- | --------------------------- |
+| `Tab`           | Toggle single/all logs view |
+| `c`             | Clear logs                  |
+| `f`             | Toggle follow mode          |
+| `g` / `G`       | Scroll to top / bottom      |
+| `PgUp` / `PgDn` | Page up / down              |
+| `Ctrl+u/d`      | Half page up / down         |
+
+### Config
+
+| Key      | Action                  |
+| -------- | ----------------------- |
+| `Ctrl+L` | Reload config from disk |
+
+### General
+
+| Key | Action                    |
+| --- | ------------------------- |
+| `?` | Show help                 |
+| `q` | Quit (stops all services) |
 
 ## CLI Options
 
@@ -207,9 +268,23 @@ Commands:
 
 Options:
   -c, --config  Path to config file (default: devproc.yaml)
+  -w, --watch   Watch config file and auto-reload on changes
   -h, --help    Show help
   -v, --version Show version
 ```
+
+### Config Reload
+
+DevProc supports hot-reloading your configuration without restarting:
+
+- **Manual reload**: Press `Ctrl+L` to reload the config file
+- **Auto reload**: Run with `-w` flag to watch for file changes
+
+When config is reloaded:
+
+- New services are added (in stopped state)
+- Removed services are stopped and removed
+- Modified services are restarted with the new configuration
 
 ## Requirements
 

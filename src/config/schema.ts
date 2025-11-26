@@ -26,11 +26,15 @@ export const ServiceSchema = z.object({
   stop_signal: z.string().default("SIGTERM"),
 });
 
+// Group configuration - maps group name to array of service names
+export const GroupsSchema = z.record(z.string(), z.array(z.string()));
+
 // Main configuration schema
 export const ConfigSchema = z.object({
   name: z.string(),
   env: z.record(z.string(), z.string()).optional(),
   dotenv: z.string().optional(),
+  groups: GroupsSchema.optional(),
   services: z.record(z.string(), ServiceSchema),
 });
 
@@ -38,4 +42,5 @@ export const ConfigSchema = z.object({
 export type HealthcheckConfig = z.infer<typeof HealthcheckSchema>;
 export type DependsOn = z.infer<typeof DependsOnSchema>;
 export type ServiceConfig = z.infer<typeof ServiceSchema>;
+export type Groups = z.infer<typeof GroupsSchema>;
 export type Config = z.infer<typeof ConfigSchema>;

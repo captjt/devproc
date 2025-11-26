@@ -1,9 +1,9 @@
-import { createSignal, createEffect, onMount, onCleanup, For, Show } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, For, Show, Switch, Match } from "solid-js";
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid";
 import { TextAttributes } from "@opentui/core";
 import type { ScrollBoxRenderable } from "@opentui/core";
 import type { ProcessManager } from "./process/manager";
-import { useServices } from "./ui/hooks/useServices";
+import { useServices, type DisplayItem } from "./ui/hooks/useServices";
 import { useLogs } from "./ui/hooks/useLogs";
 
 interface AppProps {
@@ -54,10 +54,22 @@ function formatLogTime(date: Date): string {
 
 export function App(props: AppProps) {
   const dimensions = useTerminalDimensions();
-  const { services, selectedIndex, selectedService, selectNext, selectPrev } = useServices(
-    props.manager,
-  );
+  const {
+    services,
+    displayItems,
+    selectedIndex,
+    selectedService,
+    selectedGroup,
+    selectedName,
+    selectNext,
+    selectPrev,
+    toggleGroupCollapsed,
+    isGroupCollapsed,
+  } = useServices(props.manager);
   const { getServiceLogs, clearLogs, filteredLogs } = useLogs(props.manager);
+
+  // Status message for reload feedback
+  const [statusMessage, setStatusMessage] = createSignal<string | null>(null);
 
   const [viewMode, setViewMode] = createSignal<"single" | "all">("single");
   const [showHelp, setShowHelp] = createSignal(false);
@@ -295,6 +307,64 @@ export function App(props: AppProps) {
             event.preventDefault();
           }
           break;
+
+        // Config reload
+        case "l":
+          if (event.ctrl) {
+            // Ctrl+L - reload config
+            setStatusMessage("Reloading config...");
+            props.manager
+              .reloadConfig()
+              .then((result) => {
+                const changes = [
+                  result.added.length > 0 ? `+${result.added.length}` : "",
+                  result.removed.length > 0 ? `-${result.removed.length}` : "",
+                  result.modified.length > 0 ? `~${result.modified.length}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                setStatusMessage(changes ? `Reloaded: ${changes}` : "Config unchanged");
+                setTimeout(() => setStatusMessage(null), 3000);
+              })
+              .catch((err) => {
+                setStatusMessage(`Reload failed: ${err.message}`);
+                setTimeout(() => setStatusMessage(null), 5000);
+              });
+            event.preventDefault();
+          }
+          break;
+
+        // Group operations
+        case "space":
+        case " ":
+          // Toggle group collapsed (if current service is in a group)
+          const group = selectedGroup();
+          if (group) {
+            toggleGroupCollapsed(group);
+          }
+          event.preventDefault();
+          break;
+
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+        case "6":
+        case "7":
+        case "8":
+        case "9":
+          // Quick group operations with number keys + shift
+          if (event.shift) {
+            const groupIdx = parseInt(event.name) - 1;
+            const groups = Array.from(props.manager.getGroups().keys());
+            if (groupIdx < groups.length) {
+              const groupName = groups[groupIdx]!;
+              // Start the group
+              props.manager.startGroup(groupName).catch(console.error);
+            }
+          }
+          break;
       }
     },
   );
@@ -316,30 +386,69 @@ export function App(props: AppProps) {
       <box flexDirection="row" flexGrow={1}>
         {/* Service list */}
         <box width={sidebarWidth()} flexDirection="column" borderStyle="rounded" borderColor="gray">
-          <box height={1} paddingLeft={1}>
+          <box height={1} paddingLeft={1} flexDirection="row">
             <text fg="cyan" attributes={TextAttributes.BOLD}>
               Services
             </text>
+            <box flexGrow={1} />
+            <Show when={statusMessage()}>
+              <text fg="yellow">{statusMessage()}</text>
+            </Show>
           </box>
           <box flexDirection="column" flexGrow={1}>
-            <For each={services()}>
-              {(service, index) => (
-                <box height={1} paddingLeft={1} paddingRight={1} flexDirection="row">
-                  <text fg={STATUS_COLORS[service.status]}>{STATUS_SYMBOLS[service.status]}</text>
-                  <text> </text>
-                  <text
-                    fg={index() === selectedIndex() ? "white" : undefined}
-                    attributes={
-                      index() === selectedIndex() ? TextAttributes.BOLD : TextAttributes.NONE
-                    }
-                    flexGrow={1}
-                  >
-                    {service.name}
-                  </text>
-                  <text fg="gray">{service.port ? `:${service.port}` : ""}</text>
-                  <text> </text>
-                  <text fg="gray">{formatUptime(service.startedAt)}</text>
-                </box>
+            <For each={displayItems()}>
+              {(item) => (
+                <Switch>
+                  <Match when={item.type === "group"}>
+                    {(() => {
+                      const groupItem = item as DisplayItem & { type: "group" };
+                      const collapsed = isGroupCollapsed(groupItem.group.name);
+                      const runningCount = groupItem.services.filter(
+                        (s) => s.status === "running" || s.status === "healthy",
+                      ).length;
+                      return (
+                        <box height={1} paddingLeft={1} paddingRight={1} flexDirection="row">
+                          <text fg="magenta">{collapsed ? "▸" : "▾"}</text>
+                          <text> </text>
+                          <text fg="magenta" attributes={TextAttributes.BOLD}>
+                            {groupItem.group.name}
+                          </text>
+                          <text fg="gray">
+                            {" "}
+                            ({runningCount}/{groupItem.services.length})
+                          </text>
+                        </box>
+                      );
+                    })()}
+                  </Match>
+                  <Match when={item.type === "service"}>
+                    {(() => {
+                      const serviceItem = item as DisplayItem & { type: "service" };
+                      const service = serviceItem.service;
+                      const isSelected = selectedName() === service.name;
+                      const indent = serviceItem.group ? "  " : "";
+                      return (
+                        <box height={1} paddingLeft={1} paddingRight={1} flexDirection="row">
+                          <text>{indent}</text>
+                          <text fg={STATUS_COLORS[service.status]}>
+                            {STATUS_SYMBOLS[service.status]}
+                          </text>
+                          <text> </text>
+                          <text
+                            fg={isSelected ? "white" : undefined}
+                            attributes={isSelected ? TextAttributes.BOLD : TextAttributes.NONE}
+                            flexGrow={1}
+                          >
+                            {service.name}
+                          </text>
+                          <text fg="gray">{service.port ? `:${service.port}` : ""}</text>
+                          <text> </text>
+                          <text fg="gray">{formatUptime(service.startedAt)}</text>
+                        </box>
+                      );
+                    })()}
+                  </Match>
+                </Switch>
               )}
             </For>
           </box>
@@ -428,21 +537,18 @@ export function App(props: AppProps) {
           </text>
           <text> </text>
           <text fg="yellow">Services</text>
-          <text>↑/↓ or j/k Navigate services</text>
-          <text>s Start selected service</text>
-          <text>x Stop selected / X Stop all</text>
-          <text>r Restart selected / R Restart all</text>
-          <text>a Start all services</text>
+          <text>↑/↓ j/k Navigate | s Start | x Stop | r Restart</text>
+          <text>a Start all | X Stop all | R Restart all</text>
+          <text>Space Toggle group collapsed</text>
           <text> </text>
           <text fg="yellow">Logs</text>
-          <text>Tab Toggle single/all logs view</text>
-          <text>c Clear logs</text>
-          <text>f Toggle follow mode</text>
-          <text>g/G Scroll to top/bottom</text>
-          <text>PgUp/PgDn Page up/down</text>
-          <text>Ctrl+u/d Half page up/down</text>
+          <text>Tab Toggle view | c Clear | f Follow</text>
+          <text>g/G Top/bottom | PgUp/PgDn | Ctrl+u/d</text>
           <text> </text>
-          <text>? Help q Quit</text>
+          <text fg="yellow">Config</text>
+          <text>Ctrl+L Reload config from disk</text>
+          <text> </text>
+          <text>? Help | q Quit</text>
           <text> </text>
           <text fg="gray">Press any key to close</text>
         </box>

@@ -7,6 +7,15 @@ name: example-project
 env:
   NODE_ENV: development
 
+# Service groups - organize related services together
+groups:
+  core:
+    - echo
+    - counter
+  monitoring:
+    - logger
+    - metrics
+
 # Example services for a typical full-stack application
 services:
   # Simple echo service for testing
@@ -25,6 +34,11 @@ services:
   logger:
     cmd: "bash -c 'while true; do date; sleep 3; done'"
     color: yellow
+
+  # Metrics service
+  metrics:
+    cmd: 'bash -c ''while true; do echo "Memory: $((RANDOM % 100))% CPU: $((RANDOM % 100))%"; sleep 5; done'''
+    color: magenta
 # Example with Docker (commented out - uncomment if you have Docker)
 # postgres:
 #   cmd: docker run --rm --name devproc-pg -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:16

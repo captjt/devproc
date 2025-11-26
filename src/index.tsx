@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 import { render } from "@opentui/solid";
+import { watch } from "fs";
 import { loadConfig } from "./config/loader";
 import { ProcessManager } from "./process/manager";
 import { App } from "./app";
 
-const VERSION = "0.1.0";
+const VERSION = "0.3.0";
 
 function printHelp() {
   console.log(`
@@ -21,6 +22,7 @@ Commands:
 
 Options:
   -c, --config <file>   Path to config file (default: devproc.yaml)
+  -w, --watch           Watch config file for changes and auto-reload
   -h, --help            Show this help message
   -v, --version         Show version
 
@@ -28,6 +30,7 @@ Examples:
   devproc               Start all services with TUI
   devproc up            Start all services with TUI
   devproc -c dev.yaml   Use custom config file
+  devproc -w            Auto-reload on config changes
 `);
 }
 
@@ -35,6 +38,7 @@ async function main() {
   const args = process.argv.slice(2);
   let configPath: string | undefined;
   let command = "up";
+  let watchConfig = false;
 
   // Parse arguments
   for (let i = 0; i < args.length; i++) {
@@ -52,6 +56,11 @@ async function main() {
 
     if (arg === "-c" || arg === "--config") {
       configPath = args[++i];
+      continue;
+    }
+
+    if (arg === "-w" || arg === "--watch") {
+      watchConfig = true;
       continue;
     }
 
@@ -105,6 +114,28 @@ async function main() {
     // For 'up' and 'restart', start the TUI
     if (command === "restart") {
       await manager.restartAll();
+    }
+
+    // Set up config file watcher if enabled
+    if (watchConfig) {
+      let debounceTimer: Timer | null = null;
+      const watcher = watch(config.configPath, (eventType) => {
+        if (eventType === "change") {
+          // Debounce rapid changes (editors often write multiple times)
+          if (debounceTimer) {
+            clearTimeout(debounceTimer);
+          }
+          debounceTimer = setTimeout(() => {
+            manager.reloadConfig().catch((err) => {
+              // Errors are emitted via events, handled in UI
+              console.error("Config reload error:", err.message);
+            });
+          }, 500);
+        }
+      });
+
+      // Clean up watcher on exit
+      process.on("exit", () => watcher.close());
     }
 
     // Render the TUI

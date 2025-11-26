@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
-import type { NormalizedConfig, NormalizedService } from "../config/types";
-import { getDependencyOrder } from "../config/loader";
+import type { NormalizedConfig, NormalizedService, ServiceGroup } from "../config/types";
+import { getDependencyOrder, loadConfig } from "../config/loader";
 import {
   type ServiceState,
   type LogLine,
@@ -20,6 +20,8 @@ interface ProcessManagerEvents {
   log: [line: LogLine];
   error: [name: string, error: Error];
   "all-stopped": [];
+  "config-reloaded": [config: NormalizedConfig];
+  "config-error": [error: Error];
 }
 
 /**
@@ -386,5 +388,194 @@ export class ProcessManager extends EventEmitter<ProcessManagerEvents> {
    */
   getServiceConfig(name: string): NormalizedService | undefined {
     return this.config.services.get(name);
+  }
+
+  /**
+   * Get all groups
+   */
+  getGroups(): Map<string, ServiceGroup> {
+    return this.config.groups;
+  }
+
+  /**
+   * Get a specific group
+   */
+  getGroup(name: string): ServiceGroup | undefined {
+    return this.config.groups.get(name);
+  }
+
+  /**
+   * Get group for a service
+   */
+  getServiceGroup(serviceName: string): string | undefined {
+    return this.config.services.get(serviceName)?.group;
+  }
+
+  /**
+   * Start all services in a group
+   */
+  async startGroup(groupName: string): Promise<void> {
+    const group = this.config.groups.get(groupName);
+    if (!group) {
+      throw new Error(`Unknown group: ${groupName}`);
+    }
+
+    // Get services in dependency order, filtered to this group
+    const order = getDependencyOrder(this.config.services);
+    const groupServices = order.filter((name) => group.services.includes(name));
+
+    for (const name of groupServices) {
+      await this.start(name);
+    }
+  }
+
+  /**
+   * Stop all services in a group
+   */
+  async stopGroup(groupName: string): Promise<void> {
+    const group = this.config.groups.get(groupName);
+    if (!group) {
+      throw new Error(`Unknown group: ${groupName}`);
+    }
+
+    // Get services in reverse dependency order, filtered to this group
+    const order = getDependencyOrder(this.config.services);
+    const groupServices = order.filter((name) => group.services.includes(name)).reverse();
+
+    for (const name of groupServices) {
+      await this.stop(name, { skipDependents: true });
+    }
+  }
+
+  /**
+   * Restart all services in a group
+   */
+  async restartGroup(groupName: string): Promise<void> {
+    await this.stopGroup(groupName);
+    await this.startGroup(groupName);
+  }
+
+  /**
+   * Get the current config
+   */
+  getConfig(): NormalizedConfig {
+    return this.config;
+  }
+
+  /**
+   * Reload configuration from disk
+   * Returns info about what changed
+   */
+  async reloadConfig(): Promise<{
+    added: string[];
+    removed: string[];
+    modified: string[];
+  }> {
+    try {
+      const newConfig = await loadConfig(this.config.configPath);
+
+      const added: string[] = [];
+      const removed: string[] = [];
+      const modified: string[] = [];
+
+      // Find added and modified services
+      for (const [name, newService] of newConfig.services) {
+        const oldService = this.config.services.get(name);
+        if (!oldService) {
+          added.push(name);
+        } else if (this.serviceConfigChanged(oldService, newService)) {
+          modified.push(name);
+        }
+      }
+
+      // Find removed services
+      for (const name of this.config.services.keys()) {
+        if (!newConfig.services.has(name)) {
+          removed.push(name);
+        }
+      }
+
+      // Stop and remove services that were removed from config
+      for (const name of removed) {
+        if (isRunning(this.states.get(name)!)) {
+          await this.stop(name);
+        }
+        this.states.delete(name);
+      }
+
+      // Add states for new services
+      for (const name of added) {
+        this.states.set(name, createInitialState(name));
+      }
+
+      // For modified services, restart if running
+      for (const name of modified) {
+        const state = this.states.get(name);
+        if (state && isRunning(state)) {
+          // Will restart after config update
+          await this.stop(name);
+        }
+      }
+
+      // Update config
+      this.config = newConfig;
+
+      // Restart modified services that were running
+      for (const name of modified) {
+        const state = this.states.get(name);
+        if (state?.status === "stopped") {
+          // Was running before, restart with new config
+          await this.start(name);
+        }
+      }
+
+      this.emit("config-reloaded", newConfig);
+
+      return { added, removed, modified };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.emit("config-error", err);
+      throw err;
+    }
+  }
+
+  /**
+   * Check if service config has changed (for reload)
+   */
+  private serviceConfigChanged(oldService: NormalizedService, newService: NormalizedService): boolean {
+    // Compare key fields
+    if (oldService.cmd !== newService.cmd) return true;
+    if (oldService.cwd !== newService.cwd) return true;
+    if (oldService.restart !== newService.restart) return true;
+    if (oldService.group !== newService.group) return true;
+
+    // Compare env
+    const oldEnvKeys = Object.keys(oldService.env).sort();
+    const newEnvKeys = Object.keys(newService.env).sort();
+    if (oldEnvKeys.length !== newEnvKeys.length) return true;
+    for (let i = 0; i < oldEnvKeys.length; i++) {
+      if (oldEnvKeys[i] !== newEnvKeys[i]) return true;
+      if (oldService.env[oldEnvKeys[i]!] !== newService.env[newEnvKeys[i]!]) return true;
+    }
+
+    // Compare dependencies
+    if (oldService.dependsOn.size !== newService.dependsOn.size) return true;
+    for (const [dep, condition] of oldService.dependsOn) {
+      if (newService.dependsOn.get(dep) !== condition) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Toggle group collapsed state
+   */
+  toggleGroupCollapsed(groupName: string): boolean {
+    const group = this.config.groups.get(groupName);
+    if (group) {
+      group.collapsed = !group.collapsed;
+      return group.collapsed;
+    }
+    return false;
   }
 }
