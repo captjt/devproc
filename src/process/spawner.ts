@@ -1,47 +1,47 @@
-import { spawn, type Subprocess } from "bun";
-import type { NormalizedService } from "../config/types";
-import type { LogLine } from "./types";
+import { spawn, type Subprocess } from "bun"
+import type { NormalizedService } from "../config/types"
+import type { LogLine } from "./types"
 
 export interface SpawnResult {
-  process: Subprocess;
-  stdoutReader: AsyncIterable<string>;
-  stderrReader: AsyncIterable<string>;
+  process: Subprocess
+  stdoutReader: AsyncIterable<string>
+  stderrReader: AsyncIterable<string>
 }
 
 /**
  * Parse a command string into arguments, handling quotes
  */
 function parseCommand(cmd: string): string[] {
-  const args: string[] = [];
-  let current = "";
-  let inQuote: string | null = null;
+  const args: string[] = []
+  let current = ""
+  let inQuote: string | null = null
 
   for (let i = 0; i < cmd.length; i++) {
-    const char = cmd[i]!;
+    const char = cmd[i]!
 
     if (inQuote) {
       if (char === inQuote) {
-        inQuote = null;
+        inQuote = null
       } else {
-        current += char;
+        current += char
       }
     } else if (char === '"' || char === "'") {
-      inQuote = char;
+      inQuote = char
     } else if (char === " " || char === "\t") {
       if (current) {
-        args.push(current);
-        current = "";
+        args.push(current)
+        current = ""
       }
     } else {
-      current += char;
+      current += char
     }
   }
 
   if (current) {
-    args.push(current);
+    args.push(current)
   }
 
-  return args;
+  return args
 }
 
 /**
@@ -52,38 +52,38 @@ async function* readLines(
   service: string,
   streamType: "stdout" | "stderr",
 ): AsyncIterable<string> {
-  if (!stream) return;
+  if (!stream) return
 
-  const reader = stream.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
 
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await reader.read()
 
       if (done) {
         // Emit any remaining content
         if (buffer) {
-          yield buffer;
+          yield buffer
         }
-        break;
+        break
       }
 
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, { stream: true })
 
       // Split on newlines and emit complete lines
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
+      const lines = buffer.split("\n")
+      buffer = lines.pop() ?? ""
 
       for (const line of lines) {
         if (line) {
-          yield line;
+          yield line
         }
       }
     }
   } finally {
-    reader.releaseLock();
+    reader.releaseLock()
   }
 }
 
@@ -91,7 +91,7 @@ async function* readLines(
  * Spawn a service process
  */
 export function spawnService(config: NormalizedService): SpawnResult {
-  const args = parseCommand(config.cmd);
+  const args = parseCommand(config.cmd)
 
   const proc = spawn({
     cmd: args,
@@ -102,13 +102,13 @@ export function spawnService(config: NormalizedService): SpawnResult {
     },
     stdout: "pipe",
     stderr: "pipe",
-  });
+  })
 
   return {
     process: proc,
     stdoutReader: readLines(proc.stdout, config.name, "stdout"),
     stderrReader: readLines(proc.stderr, config.name, "stderr"),
-  };
+  }
 }
 
 /**
@@ -126,14 +126,11 @@ export async function processStreams(
         service: serviceName,
         content,
         stream,
-      });
+      })
     }
-  };
+  }
 
-  await Promise.all([
-    processStream(result.stdoutReader, "stdout"),
-    processStream(result.stderrReader, "stderr"),
-  ]);
+  await Promise.all([processStream(result.stdoutReader, "stdout"), processStream(result.stderrReader, "stderr")])
 }
 
 /**
@@ -146,26 +143,24 @@ export async function stopProcess(
 ): Promise<number | null> {
   // Check if already exited
   if (proc.exitCode !== null) {
-    return proc.exitCode;
+    return proc.exitCode
   }
 
   // Send the signal
-  proc.kill(signal === "SIGTERM" ? 15 : signal === "SIGKILL" ? 9 : 15);
+  proc.kill(signal === "SIGTERM" ? 15 : signal === "SIGKILL" ? 9 : 15)
 
   // Wait for exit with timeout
-  const exitPromise = proc.exited;
+  const exitPromise = proc.exited
 
-  const timeoutPromise = new Promise<"timeout">((resolve) =>
-    setTimeout(() => resolve("timeout"), timeoutMs),
-  );
+  const timeoutPromise = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), timeoutMs))
 
-  const result = await Promise.race([exitPromise, timeoutPromise]);
+  const result = await Promise.race([exitPromise, timeoutPromise])
 
   if (result === "timeout") {
     // Force kill if timeout
-    proc.kill(9); // SIGKILL
-    return await proc.exited;
+    proc.kill(9) // SIGKILL
+    return await proc.exited
   }
 
-  return result;
+  return result
 }

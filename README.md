@@ -252,12 +252,12 @@ groups:
 
 ### Search
 
-| Key   | Action                          |
-| ----- | ------------------------------- |
-| `/`   | Start search (supports regex)   |
-| `n`   | Jump to next match              |
-| `N`   | Jump to previous match          |
-| `Esc` | Clear search                    |
+| Key   | Action                        |
+| ----- | ----------------------------- |
+| `/`   | Start search (supports regex) |
+| `n`   | Jump to next match            |
+| `N`   | Jump to previous match        |
+| `Esc` | Clear search                  |
 
 ### Config
 

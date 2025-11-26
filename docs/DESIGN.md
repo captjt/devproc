@@ -139,34 +139,34 @@ Central orchestrator for all service lifecycles.
 
 ```typescript
 interface ServiceState {
-  name: string;
-  status: "stopped" | "starting" | "running" | "stopping" | "crashed" | "failed";
-  pid?: number;
-  startedAt?: Date;
-  exitCode?: number;
-  port?: number;
-  error?: string;
+  name: string
+  status: "stopped" | "starting" | "running" | "stopping" | "crashed" | "failed"
+  pid?: number
+  startedAt?: Date
+  exitCode?: number
+  port?: number
+  error?: string
 }
 
 class ProcessManager extends EventEmitter {
   // Start a single service (resolves dependencies first)
-  async start(name: string): Promise<void>;
+  async start(name: string): Promise<void>
 
   // Start all services in dependency order
-  async startAll(): Promise<void>;
+  async startAll(): Promise<void>
 
   // Stop a service gracefully
-  async stop(name: string): Promise<void>;
+  async stop(name: string): Promise<void>
 
   // Stop all services (reverse dependency order)
-  async stopAll(): Promise<void>;
+  async stopAll(): Promise<void>
 
   // Restart a service
-  async restart(name: string): Promise<void>;
+  async restart(name: string): Promise<void>
 
   // Get current state
-  getState(name: string): ServiceState;
-  getAllStates(): ServiceState[];
+  getState(name: string): ServiceState
+  getAllStates(): ServiceState[]
 
   // Events: 'state-change', 'log', 'error'
 }
@@ -178,24 +178,24 @@ Manages log lines per service with configurable buffer size.
 
 ```typescript
 interface LogLine {
-  timestamp: Date;
-  service: string;
-  content: string;
-  stream: "stdout" | "stderr";
+  timestamp: Date
+  service: string
+  content: string
+  stream: "stdout" | "stderr"
 }
 
 interface LogBuffer {
   // Add log line
-  append(service: string, line: string, stream: "stdout" | "stderr"): void;
+  append(service: string, line: string, stream: "stdout" | "stderr"): void
 
   // Get logs for a service (most recent N lines)
-  get(service: string, limit?: number): LogLine[];
+  get(service: string, limit?: number): LogLine[]
 
   // Get interleaved logs from all services
-  getAll(limit?: number): LogLine[];
+  getAll(limit?: number): LogLine[]
 
   // Clear logs for a service
-  clear(service: string): void;
+  clear(service: string): void
 }
 ```
 
@@ -203,11 +203,11 @@ interface LogBuffer {
 
 ```typescript
 interface AppState {
-  services: ServiceState[];
-  selectedService: string | null;
-  viewMode: "single" | "all"; // View one service's logs or all interleaved
-  following: boolean; // Auto-scroll to new logs
-  filter: string; // Log search/filter
+  services: ServiceState[]
+  selectedService: string | null
+  viewMode: "single" | "all" // View one service's logs or all interleaved
+  following: boolean // Auto-scroll to new logs
+  filter: string // Log search/filter
 }
 ```
 
@@ -301,14 +301,14 @@ Start with config types and validation - this defines the contract for everythin
 
 ```typescript
 // src/config/schema.ts
-import { z } from "zod";
+import { z } from "zod"
 
 const HealthcheckSchema = z.object({
   cmd: z.string(),
   interval: z.string().default("2s"),
   timeout: z.string().default("5s"),
   retries: z.number().default(10),
-});
+})
 
 const ServiceSchema = z.object({
   cmd: z.string(),
@@ -319,14 +319,14 @@ const ServiceSchema = z.object({
   restart: z.enum(["no", "on-failure", "always"]).default("no"),
   color: z.string().optional(),
   stop_signal: z.string().default("SIGTERM"),
-});
+})
 
 export const ConfigSchema = z.object({
   name: z.string(),
   env: z.record(z.string()).optional(),
   dotenv: z.string().optional(),
   services: z.record(ServiceSchema),
-});
+})
 ```
 
 ### Step 3: Process Spawner
@@ -335,7 +335,7 @@ Basic child process management using Bun's spawn API.
 
 ```typescript
 // src/process/spawner.ts
-import { spawn, type Subprocess } from "bun";
+import { spawn, type Subprocess } from "bun"
 
 export function spawnService(config: ServiceConfig): Subprocess {
   const proc = spawn({
@@ -344,9 +344,9 @@ export function spawnService(config: ServiceConfig): Subprocess {
     env: { ...process.env, ...config.env },
     stdout: "pipe",
     stderr: "pipe",
-  });
+  })
 
-  return proc;
+  return proc
 }
 ```
 
@@ -356,7 +356,7 @@ Start with the layout structure, then fill in components.
 
 ```tsx
 // src/app.tsx
-import { Box, Text, ScrollBox } from "@opentui/solid";
+import { Box, Text, ScrollBox } from "@opentui/solid"
 
 export function App() {
   return (
@@ -371,7 +371,7 @@ export function App() {
         <LogPanel />
       </Box>
     </Box>
-  );
+  )
 }
 ```
 
@@ -387,8 +387,8 @@ Connect process manager events to UI state updates using Solid's reactivity.
 
 ```typescript
 // Example test
-import { test, expect } from "bun:test";
-import { resolveDependencyOrder } from "./process/dependencies";
+import { test, expect } from "bun:test"
+import { resolveDependencyOrder } from "./process/dependencies"
 
 test("resolves dependency order correctly", () => {
   const services = {
@@ -396,11 +396,11 @@ test("resolves dependency order correctly", () => {
     api: { depends_on: ["postgres", "redis"] },
     postgres: {},
     redis: {},
-  };
+  }
 
-  const order = resolveDependencyOrder(services);
-  expect(order).toEqual(["postgres", "redis", "api", "web"]);
-});
+  const order = resolveDependencyOrder(services)
+  expect(order).toEqual(["postgres", "redis", "api", "web"])
+})
 ```
 
 ## Key opentui Components to Use

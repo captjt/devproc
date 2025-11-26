@@ -26,27 +26,27 @@ export const colors = {
   brightMagenta: "\x1b[95m",
   brightCyan: "\x1b[96m",
   brightWhite: "\x1b[97m",
-} as const;
+} as const
 
-export type ColorName = keyof typeof colors;
+export type ColorName = keyof typeof colors
 
 /**
  * Wrap text with a color
  */
 export function colorize(text: string, color: ColorName): string {
-  return `${colors[color]}${text}${colors.reset}`;
+  return `${colors[color]}${text}${colors.reset}`
 }
 
 /**
  * Get color code for a named color from config
  */
 export function getServiceColor(colorName?: string): string {
-  if (!colorName) return "";
+  if (!colorName) return ""
 
-  const normalizedName = colorName.toLowerCase();
-  const colorCode = colors[normalizedName as ColorName];
+  const normalizedName = colorName.toLowerCase()
+  const colorCode = colors[normalizedName as ColorName]
 
-  return colorCode || "";
+  return colorCode || ""
 }
 
 /**
@@ -54,61 +54,57 @@ export function getServiceColor(colorName?: string): string {
  */
 export function stripAnsi(text: string): string {
   // eslint-disable-next-line no-control-regex
-  return text.replace(/\x1b\[[0-9;]*m/g, "");
+  return text.replace(/\x1b\[[0-9;]*m/g, "")
 }
 
 /**
  * Calculate visible width of a string (accounting for ANSI codes)
  */
 export function visibleLength(text: string): number {
-  return stripAnsi(text).length;
+  return stripAnsi(text).length
 }
 
 /**
  * Truncate text to a maximum visible width, preserving ANSI codes
  */
 export function truncate(text: string, maxWidth: number, ellipsis = "..."): string {
-  const stripped = stripAnsi(text);
+  const stripped = stripAnsi(text)
 
   if (stripped.length <= maxWidth) {
-    return text;
+    return text
   }
 
-  const targetLength = maxWidth - ellipsis.length;
+  const targetLength = maxWidth - ellipsis.length
   if (targetLength <= 0) {
-    return ellipsis.slice(0, maxWidth);
+    return ellipsis.slice(0, maxWidth)
   }
 
   // Simple approach: strip, truncate, and lose color codes
   // A more complex approach would preserve ANSI codes
-  return stripped.slice(0, targetLength) + ellipsis;
+  return stripped.slice(0, targetLength) + ellipsis
 }
 
 /**
  * Pad text to a specific visible width
  */
-export function pad(
-  text: string,
-  width: number,
-  align: "left" | "right" | "center" = "left",
-): string {
-  const visible = visibleLength(text);
+export function pad(text: string, width: number, align: "left" | "right" | "center" = "left"): string {
+  const visible = visibleLength(text)
 
   if (visible >= width) {
-    return text;
+    return text
   }
 
-  const padding = width - visible;
+  const padding = width - visible
 
   switch (align) {
     case "left":
-      return text + " ".repeat(padding);
+      return text + " ".repeat(padding)
     case "right":
-      return " ".repeat(padding) + text;
+      return " ".repeat(padding) + text
     case "center": {
-      const left = Math.floor(padding / 2);
-      const right = padding - left;
-      return " ".repeat(left) + text + " ".repeat(right);
+      const left = Math.floor(padding / 2)
+      const right = padding - left
+      return " ".repeat(left) + text + " ".repeat(right)
     }
   }
 }
@@ -124,28 +120,28 @@ export const statusSymbols = {
   stopping: "◑",
   crashed: "✗",
   failed: "✗",
-} as const;
+} as const
 
 /**
  * Get status indicator with color
  */
 export function getStatusIndicator(status: keyof typeof statusSymbols): string {
-  const symbol = statusSymbols[status];
+  const symbol = statusSymbols[status]
 
   switch (status) {
     case "stopped":
-      return colorize(symbol, "gray");
+      return colorize(symbol, "gray")
     case "starting":
     case "stopping":
-      return colorize(symbol, "yellow");
+      return colorize(symbol, "yellow")
     case "running":
-      return colorize(symbol, "blue");
+      return colorize(symbol, "blue")
     case "healthy":
-      return colorize(symbol, "green");
+      return colorize(symbol, "green")
     case "crashed":
     case "failed":
-      return colorize(symbol, "red");
+      return colorize(symbol, "red")
     default:
-      return symbol;
+      return symbol
   }
 }

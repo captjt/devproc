@@ -1,13 +1,13 @@
-import { type Component, For } from "solid-js";
-import { TextAttributes } from "@opentui/core";
-import type { ServiceState } from "../../process/types";
-import { ServiceRow } from "./ServiceRow";
+import { type Component, For } from "solid-js"
+import { TextAttributes } from "@opentui/core"
+import type { ServiceState } from "../../process/types"
+import { ServiceRow } from "./ServiceRow"
 
 interface ServiceListProps {
-  services: ServiceState[];
-  selectedIndex: number;
-  width: number;
-  height: number;
+  services: ServiceState[]
+  selectedIndex: number
+  width: number
+  height: number
 }
 
 export const ServiceList: Component<ServiceListProps> = (props) => {
@@ -21,16 +21,12 @@ export const ServiceList: Component<ServiceListProps> = (props) => {
       <box flexDirection="column" flexGrow={1}>
         <For each={props.services}>
           {(service, index) => (
-            <ServiceRow
-              service={service}
-              selected={index() === props.selectedIndex}
-              width={props.width - 2}
-            />
+            <ServiceRow service={service} selected={index() === props.selectedIndex} width={props.width - 2} />
           )}
         </For>
       </box>
     </box>
-  );
-};
+  )
+}
 
-export default ServiceList;
+export default ServiceList
