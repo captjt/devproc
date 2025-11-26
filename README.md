@@ -11,6 +11,9 @@ A terminal UI application for managing your local development environment - hot 
 - **Dependency Ordering** - Services start in the correct order based on dependencies
 - **Health Checks** - Wait for services to be healthy before starting dependents
 - **Live Log Streaming** - View logs from all services or focus on one with scrollback
+- **Log Search** - Search and filter logs with regex support and match highlighting
+- **Log Export** - Export logs to files for debugging or sharing
+- **Service Details** - View detailed service info including PID, env vars, and uptime
 - **Hot Config Reload** - Update your config without restarting DevProc
 - **Keyboard-Driven** - Fast navigation with vim-style keybindings
 
@@ -230,17 +233,29 @@ groups:
 | `X` (shift)    | Stop all services        |
 | `R` (shift)    | Restart all services     |
 | `Space`        | Toggle group collapsed   |
+| `i`            | Show service details     |
 
 ### Logs
 
-| Key             | Action                      |
-| --------------- | --------------------------- |
-| `Tab`           | Toggle single/all logs view |
-| `c`             | Clear logs                  |
-| `f`             | Toggle follow mode          |
-| `g` / `G`       | Scroll to top / bottom      |
-| `PgUp` / `PgDn` | Page up / down              |
-| `Ctrl+u/d`      | Half page up / down         |
+| Key             | Action                       |
+| --------------- | ---------------------------- |
+| `Tab`           | Toggle single/all logs view  |
+| `c`             | Clear logs                   |
+| `f`             | Toggle follow mode           |
+| `g` / `G`       | Scroll to top / bottom       |
+| `PgUp` / `PgDn` | Page up / down               |
+| `Ctrl+u/d`      | Half page up / down          |
+| `e`             | Export current service logs  |
+| `E` (shift)     | Export all logs              |
+
+### Search
+
+| Key   | Action                          |
+| ----- | ------------------------------- |
+| `/`   | Start search (supports regex)   |
+| `n`   | Jump to next match              |
+| `N`   | Jump to previous match          |
+| `Esc` | Clear search                    |
 
 ### Config
 

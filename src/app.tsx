@@ -4,12 +4,15 @@ import { TextAttributes } from "@opentui/core";
 import type { ScrollBoxRenderable } from "@opentui/core";
 import type { ProcessManager } from "./process/manager";
 import { useServices, type DisplayItem } from "./ui/hooks/useServices";
-import { useLogs } from "./ui/hooks/useLogs";
+import { useLogs, type SearchMatch } from "./ui/hooks/useLogs";
 
 interface AppProps {
   manager: ProcessManager;
   projectName: string;
 }
+
+// Spinner frames for animated status
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 // Status indicator symbols and colors
 const STATUS_SYMBOLS = {
@@ -66,7 +69,22 @@ export function App(props: AppProps) {
     toggleGroupCollapsed,
     isGroupCollapsed,
   } = useServices(props.manager);
-  const { getServiceLogs, clearLogs, filteredLogs } = useLogs(props.manager);
+  const {
+    getServiceLogs,
+    clearLogs,
+    filteredLogs,
+    searchQuery,
+    setSearchQuery,
+    searchMatches,
+    currentMatchIndex,
+    setCurrentMatchIndex,
+    nextMatch,
+    prevMatch,
+    clearSearch,
+    isSearchActive,
+    exportLogs,
+    logs,
+  } = useLogs(props.manager);
 
   // Status message for reload feedback
   const [statusMessage, setStatusMessage] = createSignal<string | null>(null);
@@ -74,6 +92,16 @@ export function App(props: AppProps) {
   const [viewMode, setViewMode] = createSignal<"single" | "all">("single");
   const [showHelp, setShowHelp] = createSignal(false);
   const [following, setFollowing] = createSignal(true);
+
+  // Search mode state
+  const [searchMode, setSearchMode] = createSignal(false);
+  const [searchInput, setSearchInput] = createSignal("");
+
+  // Service details panel
+  const [showDetails, setShowDetails] = createSignal(false);
+
+  // Spinner animation state
+  const [spinnerFrame, setSpinnerFrame] = createSignal(0);
 
   // Scrollbox ref for manual scrolling
   let scrollboxRef: ScrollBoxRenderable | undefined;
@@ -154,14 +182,28 @@ export function App(props: AppProps) {
   // Update uptime display periodically
   const [, setTick] = createSignal(0);
   let tickInterval: Timer;
+  let spinnerInterval: Timer;
 
   onMount(() => {
     tickInterval = setInterval(() => setTick((t) => t + 1), 1000);
+    // Spinner animation at 80ms intervals
+    spinnerInterval = setInterval(() => {
+      setSpinnerFrame((f) => (f + 1) % SPINNER_FRAMES.length);
+    }, 80);
   });
 
   onCleanup(() => {
     clearInterval(tickInterval);
+    clearInterval(spinnerInterval);
   });
+
+  // Get animated spinner symbol for starting/stopping states
+  const getStatusSymbol = (status: keyof typeof STATUS_SYMBOLS) => {
+    if (status === "starting" || status === "stopping") {
+      return SPINNER_FRAMES[spinnerFrame()]!;
+    }
+    return STATUS_SYMBOLS[status];
+  };
 
   // Update scroll info when logs change
   createEffect(() => {
@@ -171,11 +213,80 @@ export function App(props: AppProps) {
     }
   });
 
+  // Handle search input submission
+  const submitSearch = () => {
+    const query = searchInput();
+    if (query) {
+      setSearchQuery(query);
+      setCurrentMatchIndex(0);
+      // Scroll to first match
+      const matches = searchMatches();
+      if (matches.length > 0 && scrollboxRef) {
+        scrollboxRef.scrollTo(matches[0]!.logIndex);
+        setFollowing(false);
+      }
+    }
+    setSearchMode(false);
+    setSearchInput("");
+  };
+
+  // Export logs to file
+  const handleExport = async (allLogs: boolean) => {
+    const service = allLogs ? undefined : selectedService()?.name;
+    const filename = service
+      ? `devproc-${service}-${Date.now()}.log`
+      : `devproc-all-${Date.now()}.log`;
+
+    const content = exportLogs(service, "plain");
+
+    try {
+      await Bun.write(filename, content);
+      setStatusMessage(`Exported to ${filename}`);
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (err) {
+      setStatusMessage(`Export failed: ${err}`);
+      setTimeout(() => setStatusMessage(null), 3000);
+    }
+  };
+
   // Keyboard handling
   useKeyboard(
     (event: { name: string; ctrl: boolean; shift: boolean; preventDefault: () => void }) => {
+      // Handle search mode input
+      if (searchMode()) {
+        if (event.name === "escape") {
+          setSearchMode(false);
+          setSearchInput("");
+          event.preventDefault();
+          return;
+        }
+        if (event.name === "return" || event.name === "enter") {
+          submitSearch();
+          event.preventDefault();
+          return;
+        }
+        if (event.name === "backspace") {
+          setSearchInput((prev) => prev.slice(0, -1));
+          event.preventDefault();
+          return;
+        }
+        // Add character to search input
+        if (event.name.length === 1 && !event.ctrl) {
+          setSearchInput((prev) => prev + event.name);
+          event.preventDefault();
+          return;
+        }
+        return;
+      }
+
       if (showHelp()) {
         setShowHelp(false);
+        event.preventDefault();
+        return;
+      }
+
+      if (showDetails()) {
+        setShowDetails(false);
         event.preventDefault();
         return;
       }
@@ -365,6 +476,69 @@ export function App(props: AppProps) {
             }
           }
           break;
+
+        // Search
+        case "/":
+          setSearchMode(true);
+          setSearchInput("");
+          event.preventDefault();
+          break;
+
+        case "n":
+          // Next search match
+          if (isSearchActive()) {
+            nextMatch();
+            const matches = searchMatches();
+            const idx = currentMatchIndex();
+            if (matches.length > 0 && scrollboxRef) {
+              scrollboxRef.scrollTo(matches[idx]!.logIndex);
+              setFollowing(false);
+            }
+          }
+          event.preventDefault();
+          break;
+
+        case "p":
+          if (event.shift) {
+            // Previous match (N in vim)
+            if (isSearchActive()) {
+              prevMatch();
+              const matches = searchMatches();
+              const idx = currentMatchIndex();
+              if (matches.length > 0 && scrollboxRef) {
+                scrollboxRef.scrollTo(matches[idx]!.logIndex);
+                setFollowing(false);
+              }
+            }
+            event.preventDefault();
+          }
+          break;
+
+        case "escape":
+          // Clear search
+          if (isSearchActive()) {
+            clearSearch();
+          }
+          event.preventDefault();
+          break;
+
+        // Export logs
+        case "e":
+          if (event.shift) {
+            // Export all logs
+            handleExport(true);
+          } else {
+            // Export current service logs
+            handleExport(false);
+          }
+          event.preventDefault();
+          break;
+
+        // Service details
+        case "i":
+          setShowDetails(true);
+          event.preventDefault();
+          break;
       }
     },
   );
@@ -427,11 +601,13 @@ export function App(props: AppProps) {
                       const service = serviceItem.service;
                       const isSelected = selectedName() === service.name;
                       const indent = serviceItem.group ? "  " : "";
+                      const restartBadge =
+                        service.restartCount > 0 ? `↻${service.restartCount}` : "";
                       return (
                         <box height={1} paddingLeft={1} paddingRight={1} flexDirection="row">
                           <text>{indent}</text>
                           <text fg={STATUS_COLORS[service.status]}>
-                            {STATUS_SYMBOLS[service.status]}
+                            {getStatusSymbol(service.status)}
                           </text>
                           <text> </text>
                           <text
@@ -441,6 +617,9 @@ export function App(props: AppProps) {
                           >
                             {service.name}
                           </text>
+                          <Show when={restartBadge}>
+                            <text fg="yellow">{restartBadge} </text>
+                          </Show>
                           <text fg="gray">{service.port ? `:${service.port}` : ""}</text>
                           <text> </text>
                           <text fg="gray">{formatUptime(service.startedAt)}</text>
@@ -464,7 +643,15 @@ export function App(props: AppProps) {
                 : "(all)"}
             </text>
             <box flexGrow={1} />
-            <Show when={!following() && scrollInfo().total > 0}>
+            <Show when={isSearchActive()}>
+              <text fg="yellow">
+                /{searchQuery()} [{currentMatchIndex() + 1}/{searchMatches().length}]{" "}
+              </text>
+            </Show>
+            <Show when={searchMode()}>
+              <text fg="cyan">/{searchInput()}_</text>
+            </Show>
+            <Show when={!searchMode() && !following() && scrollInfo().total > 0}>
               <text fg="gray">
                 {scrollInfo().current}/{scrollInfo().total}{" "}
               </text>
@@ -479,17 +666,78 @@ export function App(props: AppProps) {
           >
             <box flexDirection="column">
               <For each={visibleLogs()}>
-                {(log) => (
-                  <box height={1} paddingLeft={1} flexDirection="row">
-                    <text fg="gray">[{formatLogTime(log.timestamp)}]</text>
-                    <text> </text>
-                    <Show when={viewMode() === "all"}>
-                      <text fg="cyan">{log.service}</text>
-                      <text fg="gray"> | </text>
-                    </Show>
-                    <text fg={log.stream === "stderr" ? "red" : undefined}>{log.content}</text>
-                  </box>
-                )}
+                {(log, logIdx) => {
+                  // Check if this log line has matches
+                  const matches = searchMatches().filter((m) => m.logIndex === logIdx());
+                  const currentMatch = searchMatches()[currentMatchIndex()];
+                  const isCurrentMatchLine = currentMatch?.logIndex === logIdx();
+
+                  return (
+                    <box height={1} paddingLeft={1} flexDirection="row">
+                      <text fg="gray">[{formatLogTime(log.timestamp)}]</text>
+                      <text> </text>
+                      <Show when={viewMode() === "all"}>
+                        <text fg="cyan">{log.service}</text>
+                        <text fg="gray"> | </text>
+                      </Show>
+                      <Show when={matches.length > 0} fallback={
+                        <text fg={log.stream === "stderr" ? "red" : undefined}>{log.content}</text>
+                      }>
+                        {/* Render with highlighted matches */}
+                        {(() => {
+                          const content = log.content;
+                          const parts: { text: string; highlight: boolean; isCurrent: boolean }[] = [];
+                          let lastEnd = 0;
+
+                          matches.forEach((match) => {
+                            if (match.startIndex > lastEnd) {
+                              parts.push({
+                                text: content.slice(lastEnd, match.startIndex),
+                                highlight: false,
+                                isCurrent: false,
+                              });
+                            }
+                            parts.push({
+                              text: content.slice(match.startIndex, match.endIndex),
+                              highlight: true,
+                              isCurrent: isCurrentMatchLine && match === currentMatch,
+                            });
+                            lastEnd = match.endIndex;
+                          });
+
+                          if (lastEnd < content.length) {
+                            parts.push({
+                              text: content.slice(lastEnd),
+                              highlight: false,
+                              isCurrent: false,
+                            });
+                          }
+
+                          return (
+                            <box flexDirection="row">
+                              <For each={parts}>
+                                {(part) => (
+                                  <Show
+                                    when={part.highlight}
+                                    fallback={
+                                      <text fg={log.stream === "stderr" ? "red" : undefined}>
+                                        {part.text}
+                                      </text>
+                                    }
+                                  >
+                                    <box backgroundColor={part.isCurrent ? "#ffff00" : "#555500"}>
+                                      <text fg="black">{part.text}</text>
+                                    </box>
+                                  </Show>
+                                )}
+                              </For>
+                            </box>
+                          );
+                        })()}
+                      </Show>
+                    </box>
+                  );
+                }}
               </For>
             </box>
           </scrollbox>
@@ -522,10 +770,10 @@ export function App(props: AppProps) {
       <Show when={showHelp()}>
         <box
           position="absolute"
-          top="25%"
-          left="25%"
-          width="50%"
-          height="50%"
+          top="20%"
+          left="20%"
+          width="60%"
+          height="60%"
           borderStyle="rounded"
           borderColor="cyan"
           backgroundColor="#1e1e1e"
@@ -539,11 +787,16 @@ export function App(props: AppProps) {
           <text fg="yellow">Services</text>
           <text>↑/↓ j/k Navigate | s Start | x Stop | r Restart</text>
           <text>a Start all | X Stop all | R Restart all</text>
-          <text>Space Toggle group collapsed</text>
+          <text>Space Toggle group | i Service info</text>
           <text> </text>
           <text fg="yellow">Logs</text>
           <text>Tab Toggle view | c Clear | f Follow</text>
           <text>g/G Top/bottom | PgUp/PgDn | Ctrl+u/d</text>
+          <text>e Export service logs | E Export all logs</text>
+          <text> </text>
+          <text fg="yellow">Search</text>
+          <text>/ Start search | n Next match | N Prev match</text>
+          <text>Esc Clear search</text>
           <text> </text>
           <text fg="yellow">Config</text>
           <text>Ctrl+L Reload config from disk</text>
@@ -552,6 +805,88 @@ export function App(props: AppProps) {
           <text> </text>
           <text fg="gray">Press any key to close</text>
         </box>
+      </Show>
+
+      {/* Service Details modal */}
+      <Show when={showDetails() && selectedService()}>
+        {(() => {
+          const service = selectedService()!;
+          const config = props.manager.getServiceConfig(service.name);
+          const uptime = service.startedAt
+            ? Math.floor((Date.now() - service.startedAt.getTime()) / 1000)
+            : 0;
+          const uptimeStr = service.startedAt
+            ? `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${uptime % 60}s`
+            : "N/A";
+
+          // Mask sensitive env values
+          const envEntries = config
+            ? Object.entries(config.env).map(([key, value]) => {
+                const isSensitive =
+                  key.toLowerCase().includes("password") ||
+                  key.toLowerCase().includes("secret") ||
+                  key.toLowerCase().includes("key") ||
+                  key.toLowerCase().includes("token");
+                return [key, isSensitive ? "********" : value];
+              })
+            : [];
+
+          return (
+            <box
+              position="absolute"
+              top="15%"
+              left="15%"
+              width="70%"
+              height="70%"
+              borderStyle="rounded"
+              borderColor="cyan"
+              backgroundColor="#1e1e1e"
+              flexDirection="column"
+              padding={1}
+            >
+              <text fg="cyan" attributes={TextAttributes.BOLD}>
+                Service Details: {service.name}
+              </text>
+              <text> </text>
+              <text fg="yellow">Status</text>
+              <text>
+                Status: {service.status} | PID: {service.pid || "N/A"} | Restarts:{" "}
+                {service.restartCount}
+              </text>
+              <text>Uptime: {uptimeStr}</text>
+              <Show when={service.exitCode !== undefined}>
+                <text>Last Exit Code: {service.exitCode}</text>
+              </Show>
+              <Show when={service.error}>
+                <text fg="red">Error: {service.error}</text>
+              </Show>
+              <text> </text>
+              <text fg="yellow">Configuration</text>
+              <text>Command: {config?.cmd || "N/A"}</text>
+              <text>Working Dir: {config?.cwd || "N/A"}</text>
+              <text>Restart Policy: {config?.restart || "no"}</text>
+              <Show when={config?.group}>
+                <text>Group: {config?.group}</text>
+              </Show>
+              <text> </text>
+              <text fg="yellow">Environment ({envEntries.length} vars)</text>
+              <box flexDirection="column" height={5}>
+                <For each={envEntries.slice(0, 5)}>
+                  {([key, value]) => (
+                    <text fg="gray">
+                      {key}={value}
+                    </text>
+                  )}
+                </For>
+                <Show when={envEntries.length > 5}>
+                  <text fg="gray">... and {envEntries.length - 5} more</text>
+                </Show>
+              </box>
+              <text> </text>
+              <text fg="gray">Press any key to close</text>
+            </box>
+          );
+        })()}
       </Show>
     </box>
   );

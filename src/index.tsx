@@ -5,7 +5,7 @@ import { loadConfig } from "./config/loader";
 import { ProcessManager } from "./process/manager";
 import { App } from "./app";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 
 function printHelp() {
   console.log(`
