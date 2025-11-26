@@ -61,7 +61,9 @@ jobs:
       - name: Create tarball
         run: |
           cd dist
-          tar -czf devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz --transform 's/devproc-${{ matrix.target }}/devproc/' devproc-${{ matrix.target }}
+          # Rename binary to 'devproc' for the tarball
+          mv devproc-${{ matrix.target }} devproc
+          tar -czf devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz devproc
           shasum -a 256 devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz > devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz.sha256
 
       - name: Upload artifact

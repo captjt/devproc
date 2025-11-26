@@ -71,11 +71,13 @@ async function buildTarget(target: Target): Promise<string> {
 async function createTarball(binaryPath: string, target: Target): Promise<string> {
   const tarballName = `devproc-v${VERSION}-${target.name}.tar.gz`;
   const tarballPath = join(DIST_DIR, tarballName);
-  const binaryName = target.outputName;
-
-  // Create tarball with just the binary renamed to 'devproc'
-  await $`tar -czf ${tarballPath} -C ${DIST_DIR} --transform 's/${binaryName}/devproc/' ${binaryName}`;
-
+  const renamedBinary = join(DIST_DIR, "devproc");
+  
+  // Rename binary to 'devproc' for the tarball (portable across BSD/GNU tar)
+  await $`mv ${binaryPath} ${renamedBinary}`;
+  await $`tar -czf ${tarballPath} -C ${DIST_DIR} devproc`;
+  await $`mv ${renamedBinary} ${binaryPath}`;
+  
   console.log(`  ✓ Created ${tarballName}`);
   return tarballPath;
 }
