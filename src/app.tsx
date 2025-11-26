@@ -1,6 +1,7 @@
-import { createSignal, onMount, onCleanup, For, Show } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, For, Show } from "solid-js";
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid";
 import { TextAttributes } from "@opentui/core";
+import type { ScrollBoxRenderable } from "@opentui/core";
 import type { ProcessManager } from "./process/manager";
 import { useServices } from "./ui/hooks/useServices";
 import { useLogs } from "./ui/hooks/useLogs";
@@ -62,17 +63,80 @@ export function App(props: AppProps) {
   const [showHelp, setShowHelp] = createSignal(false);
   const [following, setFollowing] = createSignal(true);
 
+  // Scrollbox ref for manual scrolling
+  let scrollboxRef: ScrollBoxRenderable | undefined;
+
+  // Scroll position for indicator (updated when scrolling)
+  const [scrollInfo, setScrollInfo] = createSignal({ current: 0, total: 0 });
+
   // Calculate layout dimensions
   const sidebarWidth = () => Math.min(30, Math.floor(dimensions().width * 0.3));
   const contentHeight = () => dimensions().height - 3; // Header and footer
 
-  // Get visible logs
+  // Get visible logs - return all logs, let scrollbox handle windowing
   const visibleLogs = () => {
     const selected = selectedService();
     if (viewMode() === "single" && selected) {
-      return getServiceLogs(selected.name, contentHeight() - 2);
+      return getServiceLogs(selected.name);
     }
-    return filteredLogs().slice(-(contentHeight() - 2));
+    return filteredLogs();
+  };
+
+  // Update scroll info from scrollbox
+  const updateScrollInfo = () => {
+    if (scrollboxRef) {
+      const total = visibleLogs().length;
+      const viewportHeight = contentHeight() - 2;
+      const scrollTop = scrollboxRef.scrollTop;
+      // Approximate current line based on scroll position
+      const current = Math.min(scrollTop + viewportHeight, total);
+      setScrollInfo({ current, total });
+    }
+  };
+
+  // Scroll helper functions
+  const scrollUp = (lines = 1) => {
+    if (scrollboxRef) {
+      scrollboxRef.scrollBy(-lines);
+      setFollowing(false);
+      updateScrollInfo();
+    }
+  };
+
+  const scrollDown = (lines = 1) => {
+    if (scrollboxRef) {
+      scrollboxRef.scrollBy(lines);
+      // Check if we're at the bottom to re-enable following
+      const atBottom = scrollboxRef.scrollTop >= scrollboxRef.scrollHeight - contentHeight();
+      if (atBottom) {
+        setFollowing(true);
+      }
+      updateScrollInfo();
+    }
+  };
+
+  const scrollToTop = () => {
+    if (scrollboxRef) {
+      scrollboxRef.scrollTo(0);
+      setFollowing(false);
+      updateScrollInfo();
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollboxRef) {
+      scrollboxRef.scrollTo(scrollboxRef.scrollHeight);
+      setFollowing(true);
+      updateScrollInfo();
+    }
+  };
+
+  const pageUp = () => {
+    scrollUp(contentHeight() - 2);
+  };
+
+  const pageDown = () => {
+    scrollDown(contentHeight() - 2);
   };
 
   // Update uptime display periodically
@@ -85,6 +149,14 @@ export function App(props: AppProps) {
 
   onCleanup(() => {
     clearInterval(tickInterval);
+  });
+
+  // Update scroll info when logs change
+  createEffect(() => {
+    const logs = visibleLogs();
+    if (following()) {
+      setScrollInfo({ current: logs.length, total: logs.length });
+    }
   });
 
   // Keyboard handling
@@ -185,6 +257,44 @@ export function App(props: AppProps) {
           setShowHelp(true);
           event.preventDefault();
           break;
+
+        // Log scrolling
+        case "pageup":
+          pageUp();
+          event.preventDefault();
+          break;
+
+        case "pagedown":
+          pageDown();
+          event.preventDefault();
+          break;
+
+        case "g":
+          if (event.shift) {
+            // G - scroll to bottom
+            scrollToBottom();
+          } else {
+            // g - scroll to top
+            scrollToTop();
+          }
+          event.preventDefault();
+          break;
+
+        case "u":
+          if (event.ctrl) {
+            // Ctrl+U - half page up
+            scrollUp(Math.floor((contentHeight() - 2) / 2));
+            event.preventDefault();
+          }
+          break;
+
+        case "d":
+          if (event.ctrl) {
+            // Ctrl+D - half page down
+            scrollDown(Math.floor((contentHeight() - 2) / 2));
+            event.preventDefault();
+          }
+          break;
       }
     },
   );
@@ -245,9 +355,19 @@ export function App(props: AppProps) {
                 : "(all)"}
             </text>
             <box flexGrow={1} />
-            <text fg="gray">{following() ? "[follow]" : ""}</text>
+            <Show when={!following() && scrollInfo().total > 0}>
+              <text fg="gray">
+                {scrollInfo().current}/{scrollInfo().total}{" "}
+              </text>
+            </Show>
+            <text fg={following() ? "green" : "gray"}>{following() ? "[follow]" : "[scroll]"}</text>
           </box>
-          <scrollbox flexGrow={1} stickyScroll={following()} stickyStart="bottom">
+          <scrollbox
+            ref={(el: ScrollBoxRenderable) => (scrollboxRef = el)}
+            flexGrow={1}
+            stickyScroll={following()}
+            stickyStart="bottom"
+          >
             <box flexDirection="column">
               <For each={visibleLogs()}>
                 {(log) => (
@@ -307,18 +427,22 @@ export function App(props: AppProps) {
             Keyboard Shortcuts
           </text>
           <text> </text>
+          <text fg="yellow">Services</text>
           <text>↑/↓ or j/k Navigate services</text>
           <text>s Start selected service</text>
-          <text>x Stop selected service</text>
-          <text>r Restart selected service</text>
+          <text>x Stop selected / X Stop all</text>
+          <text>r Restart selected / R Restart all</text>
           <text>a Start all services</text>
-          <text>X (shift) Stop all services</text>
-          <text>R (shift) Restart all services</text>
+          <text> </text>
+          <text fg="yellow">Logs</text>
           <text>Tab Toggle single/all logs view</text>
           <text>c Clear logs</text>
           <text>f Toggle follow mode</text>
-          <text>? Show this help</text>
-          <text>q Quit (stops all services)</text>
+          <text>g/G Scroll to top/bottom</text>
+          <text>PgUp/PgDn Page up/down</text>
+          <text>Ctrl+u/d Half page up/down</text>
+          <text> </text>
+          <text>? Help q Quit</text>
           <text> </text>
           <text fg="gray">Press any key to close</text>
         </box>
