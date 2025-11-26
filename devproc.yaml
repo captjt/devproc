@@ -1,0 +1,66 @@
+# DevProc Example Configuration
+# This is a sample config demonstrating DevProc's capabilities
+
+name: example-project
+
+# Global environment variables (applied to all services)
+env:
+  NODE_ENV: development
+
+# Example services for a typical full-stack application
+services:
+  # Simple echo service for testing
+  echo:
+    cmd: "bash -c 'while true; do echo Hello from echo service; sleep 2; done'"
+    color: cyan
+
+  # Counter service
+  counter:
+    cmd: "bash -c 'i=0; while true; do echo Count: $i; i=$((i+1)); sleep 1; done'"
+    color: green
+    depends_on:
+      - echo
+
+  # Timestamp logger
+  logger:
+    cmd: "bash -c 'while true; do date; sleep 3; done'"
+    color: yellow
+# Example with Docker (commented out - uncomment if you have Docker)
+# postgres:
+#   cmd: docker run --rm --name devproc-pg -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:16
+#   healthcheck:
+#     cmd: pg_isready -h localhost -p 5432
+#     interval: 2s
+#     timeout: 5s
+#     retries: 30
+#   stop_signal: SIGTERM
+
+# redis:
+#   cmd: docker run --rm --name devproc-redis -p 6379:6379 redis:7
+#   healthcheck:
+#     cmd: redis-cli ping
+
+# api:
+#   cmd: air
+#   cwd: ./services/api
+#   depends_on:
+#     postgres: healthy
+#     redis: healthy
+#   env:
+#     DATABASE_URL: postgres://postgres:dev@localhost:5432/myapp
+#     REDIS_URL: redis://localhost:6379
+#   color: green
+
+# worker:
+#   cmd: go run ./cmd/worker
+#   cwd: ./services/api
+#   depends_on:
+#     - api
+#   restart: on-failure
+
+# web:
+#   cmd: bun run dev
+#   cwd: ./apps/web
+#   depends_on:
+#     - api
+#   color: cyan

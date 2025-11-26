@@ -1,0 +1,169 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            target: darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: ubuntu-latest
+            target: linux-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build binary
+        run: |
+          cat > build-single.ts << 'EOF'
+          import solidPlugin from "./node_modules/@opentui/solid/scripts/solid-plugin";
+          const target = process.argv[2];
+          const result = await Bun.build({
+            entrypoints: ["./src/index.tsx"],
+            target: "bun",
+            plugins: [solidPlugin],
+            minify: true,
+            compile: {
+              target: `bun-${target}` as any,
+              outfile: `dist/devproc-${target}`,
+            },
+          });
+          if (!result.success) {
+            console.error("Build failed:", result.logs);
+            process.exit(1);
+          }
+          EOF
+          mkdir -p dist
+          bun run build-single.ts ${{ matrix.target }}
+
+      - name: Create tarball
+        run: |
+          cd dist
+          tar -czf devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz --transform 's/devproc-${{ matrix.target }}/devproc/' devproc-${{ matrix.target }}
+          shasum -a 256 devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz > devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: devproc-${{ matrix.target }}
+          path: |
+            dist/devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+            dist/devproc-${{ github.ref_name }}-${{ matrix.target }}.tar.gz.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create checksums and get SHAs
+        id: checksums
+        run: |
+          cd artifacts
+          cat *.sha256 > checksums.txt
+          cat checksums.txt
+          echo "darwin_arm64=$(grep darwin-arm64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "darwin_x64=$(grep darwin-x64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "linux_x64=$(grep linux-x64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "linux_arm64=$(grep linux-arm64 *.sha256 | head -1 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*.tar.gz
+            artifacts/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Update Homebrew formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DARWIN_ARM64="${{ steps.checksums.outputs.darwin_arm64 }}"
+          DARWIN_X64="${{ steps.checksums.outputs.darwin_x64 }}"
+          LINUX_X64="${{ steps.checksums.outputs.linux_x64 }}"
+          LINUX_ARM64="${{ steps.checksums.outputs.linux_arm64 }}"
+
+          cat > Formula/devproc.rb << EOF
+          # typed: false
+          # frozen_string_literal: true
+
+          class Devproc < Formula
+            desc "Terminal UI for managing local development environments"
+            homepage "https://github.com/captjt/devproc"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/captjt/devproc/releases/download/v${VERSION}/devproc-v${VERSION}-darwin-arm64.tar.gz"
+                sha256 "${DARWIN_ARM64}"
+              else
+                url "https://github.com/captjt/devproc/releases/download/v${VERSION}/devproc-v${VERSION}-darwin-x64.tar.gz"
+                sha256 "${DARWIN_X64}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/captjt/devproc/releases/download/v${VERSION}/devproc-v${VERSION}-linux-arm64.tar.gz"
+                sha256 "${LINUX_ARM64}"
+              else
+                url "https://github.com/captjt/devproc/releases/download/v${VERSION}/devproc-v${VERSION}-linux-x64.tar.gz"
+                sha256 "${LINUX_X64}"
+              end
+            end
+
+            def install
+              bin.install "devproc"
+            end
+
+            test do
+              assert_match "DevProc v#{version}", shell_output("#{bin}/devproc --version")
+            end
+          end
+          EOF
+
+      - name: Commit formula update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/devproc.rb
+          git commit -m "Update Homebrew formula to v${{ steps.version.outputs.version }}"
+          git push origin HEAD:master

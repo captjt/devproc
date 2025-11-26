@@ -1,0 +1,50 @@
+{
+  "name": "devproc",
+  "version": "0.1.0",
+  "description": "Developer Process Manager - A terminal UI for managing local development environments",
+  "author": "Jordan Taylor",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/captjt/devproc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/captjt/devproc/issues"
+  },
+  "homepage": "https://github.com/captjt/devproc#readme",
+  "keywords": [
+    "devproc",
+    "process-manager",
+    "tui",
+    "terminal",
+    "development",
+    "docker",
+    "cli",
+    "bun"
+  ],
+  "module": "src/index.tsx",
+  "type": "module",
+  "bin": {
+    "devproc": "./src/index.tsx"
+  },
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "dev": "bun --hot run src/index.tsx",
+    "build": "bun run scripts/build.ts",
+    "build:all": "bun run scripts/build.ts --all",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.1.50",
+    "@opentui/solid": "^0.1.50",
+    "yaml": "^2.8.1",
+    "zod": "^4.1.13"
+  }
+}
