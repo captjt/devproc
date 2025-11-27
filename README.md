@@ -280,12 +280,13 @@ groups:
 devproc [options] [command]
 
 Commands:
-  up            Start all services (default)
-  down          Stop all services
-  restart       Restart all services
-  status        Show service status
-  init          Create a new devproc.yaml config file
-  validate      Validate the config file without starting services
+  up                    Start all services (default)
+  down                  Stop all services
+  restart               Restart all services
+  status                Show service status
+  init                  Create a new devproc.yaml config file
+  validate              Validate the config file without starting services
+  completions <shell>   Generate shell completions (bash, zsh, fish)
 
 Options:
   -c, --config  Path to config file (default: devproc.yaml)
@@ -322,6 +323,34 @@ When config is reloaded:
 - New services are added (in stopped state)
 - Removed services are stopped and removed
 - Modified services are restarted with the new configuration
+
+### Shell Completions
+
+Enable tab completion for commands and options:
+
+```bash
+# Bash (add to ~/.bashrc)
+eval "$(devproc completions bash)"
+
+# Zsh (add to ~/.zshrc)
+eval "$(devproc completions zsh)"
+
+# Fish (add to ~/.config/fish/config.fish)
+devproc completions fish | source
+```
+
+Or save to a file for faster shell startup:
+
+```bash
+# Bash
+devproc completions bash > /usr/local/etc/bash_completion.d/devproc
+
+# Zsh (ensure ~/.zsh/completions is in your fpath)
+devproc completions zsh > ~/.zsh/completions/_devproc
+
+# Fish
+devproc completions fish > ~/.config/fish/completions/devproc.fish
+```
 
 ## Requirements
 

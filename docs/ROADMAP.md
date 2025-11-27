@@ -242,7 +242,7 @@ Optional web UI for remote access.
 - [ ] Debug mode with verbose logging
 - [ ] Dry-run mode to preview what would happen
 - [ ] Service templates for common stacks
-- [ ] Shell completions (bash, zsh, fish)
+- [x] Shell completions (bash, zsh, fish)
 
 ---
 
@@ -291,6 +291,7 @@ Want to help build these features? Here's how:
 - Added `devproc init` command to scaffold starter config
 - Added `devproc validate` command to check config for errors
 - Added clipboard support (`y` to copy last log, `Y` to copy all visible logs)
+- Added shell completions for bash, zsh, and fish (`devproc completions <shell>`)
 
 ### v0.4.0
 

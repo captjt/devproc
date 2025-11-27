@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 import { render } from "@opentui/solid"
 import { watch } from "fs"
-import { loadConfig, findConfigFile } from "./config/loader"
+import { loadConfig } from "./config/loader"
 import { ProcessManager } from "./process/manager"
 import { App } from "./app"
+import { getCompletion, SUPPORTED_SHELLS } from "./utils/completions"
 
 const VERSION = "0.5.0"
 
@@ -15,12 +16,13 @@ Usage:
   devproc [options] [command]
 
 Commands:
-  up            Start all services (default)
-  down          Stop all services
-  restart       Restart all services
-  status        Show service status (non-interactive)
-  init          Create a new devproc.yaml config file
-  validate      Validate the config file without starting services
+  up                    Start all services (default)
+  down                  Stop all services
+  restart               Restart all services
+  status                Show service status (non-interactive)
+  init                  Create a new devproc.yaml config file
+  validate              Validate the config file without starting services
+  completions <shell>   Generate shell completions (bash, zsh, fish)
 
 Options:
   -c, --config <file>   Path to config file (default: devproc.yaml)
@@ -35,6 +37,16 @@ Examples:
   devproc validate      Check config for errors
   devproc -c dev.yaml   Use custom config file
   devproc -w            Auto-reload on config changes
+
+Shell Completions:
+  # Bash (add to ~/.bashrc)
+  eval "$(devproc completions bash)"
+
+  # Zsh (add to ~/.zshrc)
+  eval "$(devproc completions zsh)"
+
+  # Fish (add to ~/.config/fish/config.fish)
+  devproc completions fish | source
 `)
 }
 
@@ -245,14 +257,43 @@ async function main() {
     }
 
     // Commands
-    if (["up", "down", "restart", "status", "init", "validate"].includes(arg!)) {
+    if (["up", "down", "restart", "status", "init", "validate", "completions"].includes(arg!)) {
       command = arg!
+      continue
+    }
+
+    // Shell argument for completions command
+    if (SUPPORTED_SHELLS.includes(arg!)) {
+      // This will be handled after the loop
       continue
     }
 
     console.error(`Unknown option: ${arg}`)
     printHelp()
     process.exit(1)
+  }
+
+  // Handle completions command
+  if (command === "completions") {
+    // Find the shell argument
+    const shellArg = args.find((arg) => SUPPORTED_SHELLS.includes(arg))
+    if (!shellArg) {
+      console.error("Error: Please specify a shell (bash, zsh, or fish)")
+      console.log("")
+      console.log("Usage: devproc completions <shell>")
+      console.log("")
+      console.log("Examples:")
+      console.log("  devproc completions bash")
+      console.log("  devproc completions zsh")
+      console.log("  devproc completions fish")
+      process.exit(1)
+    }
+
+    const script = getCompletion(shellArg)
+    if (script) {
+      console.log(script)
+    }
+    process.exit(0)
   }
 
   // Handle init command (doesn't need existing config)
