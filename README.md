@@ -326,7 +326,9 @@ When config is reloaded:
 
 ### Shell Completions
 
-Enable tab completion for commands and options:
+**Homebrew users**: Completions are installed automatically! Just ensure your shell is configured to load Homebrew completions.
+
+**Manual installation**: Enable tab completion for commands and options:
 
 ```bash
 # Bash (add to ~/.bashrc)

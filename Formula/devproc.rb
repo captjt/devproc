@@ -24,6 +24,9 @@ class Devproc < Formula
 
   def install
     bin.install "devproc"
+
+    # Generate and install shell completions
+    generate_completions_from_executable(bin/"devproc", "completions")
   end
 
   test do
