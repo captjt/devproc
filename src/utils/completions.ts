@@ -111,7 +111,8 @@ _devproc() {
     esac
 }
 
-_devproc "\$@"
+# Register the completion function
+compdef _devproc devproc
 `
 }
 
