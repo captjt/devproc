@@ -249,6 +249,8 @@ groups:
 | `Ctrl+u/d`      | Half page up / down          |
 | `e`             | Export current service logs  |
 | `E` (shift)     | Export all logs              |
+| `y`             | Copy last log to clipboard   |
+| `Y` (shift)     | Copy all visible logs        |
 
 ### Search
 
@@ -282,6 +284,8 @@ Commands:
   down          Stop all services
   restart       Restart all services
   status        Show service status
+  init          Create a new devproc.yaml config file
+  validate      Validate the config file without starting services
 
 Options:
   -c, --config  Path to config file (default: devproc.yaml)
@@ -289,6 +293,22 @@ Options:
   -h, --help    Show help
   -v, --version Show version
 ```
+
+### Quick Start with `init`
+
+```bash
+# Create a new config file in the current directory
+devproc init
+
+# Validate your config before running
+devproc validate
+```
+
+The `init` command will:
+
+- Detect your project name from `package.json` if present
+- Suggest services based on npm scripts (dev, start, etc.)
+- Create a commented template with examples
 
 ### Config Reload
 

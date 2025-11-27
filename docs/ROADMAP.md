@@ -215,8 +215,8 @@ Optional web UI for remote access.
 ### Configuration
 
 - [ ] JSON schema for IDE autocomplete
-- [ ] Config validation command: `devproc validate`
-- [ ] Init command: `devproc init` to generate starter config
+- [x] Config validation command: `devproc validate`
+- [x] Init command: `devproc init` to generate starter config
 - [ ] Import from docker-compose.yml
 - [ ] Import from Procfile
 
@@ -228,7 +228,7 @@ Optional web UI for remote access.
 - [ ] Resize panes with keyboard
 - [ ] Multiple log panes (split view)
 - [ ] Bookmark log lines
-- [ ] Copy log lines to clipboard
+- [x] Copy log lines to clipboard (`y` / `Y`)
 
 ### Performance
 
@@ -288,6 +288,9 @@ Want to help build these features? Here's how:
 - Real-time CPU % and memory usage displayed in service list
 - Resource graph view with sparkline visualization (toggle with `m`)
 - Color-coded CPU usage indicators
+- Added `devproc init` command to scaffold starter config
+- Added `devproc validate` command to check config for errors
+- Added clipboard support (`y` to copy last log, `Y` to copy all visible logs)
 
 ### v0.4.0
 

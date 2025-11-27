@@ -6,6 +6,7 @@ import type { ProcessManager } from "./process/manager"
 import { useServices, type DisplayItem } from "./ui/hooks/useServices"
 import { useLogs, type SearchMatch } from "./ui/hooks/useLogs"
 import { formatBytes, formatCpu, generateSparkline } from "./process/resources"
+import { copyToClipboard } from "./utils/clipboard"
 
 interface AppProps {
   manager: ProcessManager
@@ -273,6 +274,54 @@ export function App(props: AppProps) {
       setStatusMessage(`Export failed: ${err}`)
       setTimeout(() => setStatusMessage(null), 3000)
     }
+  }
+
+  // Copy last log line to clipboard
+  const handleCopyLog = async () => {
+    const logs = visibleLogs()
+    if (logs.length === 0) {
+      setStatusMessage("No logs to copy")
+      setTimeout(() => setStatusMessage(null), 2000)
+      return
+    }
+
+    // Get the last log line
+    const lastLog = logs[logs.length - 1]!
+    const time = formatLogTime(lastLog.timestamp)
+    const logLine = `[${time}] ${lastLog.service} | ${lastLog.content}`
+
+    const success = await copyToClipboard(logLine)
+    if (success) {
+      setStatusMessage("Copied to clipboard")
+    } else {
+      setStatusMessage("Copy failed")
+    }
+    setTimeout(() => setStatusMessage(null), 2000)
+  }
+
+  // Copy all visible logs to clipboard
+  const handleCopyAllLogs = async () => {
+    const logs = visibleLogs()
+    if (logs.length === 0) {
+      setStatusMessage("No logs to copy")
+      setTimeout(() => setStatusMessage(null), 2000)
+      return
+    }
+
+    const content = logs
+      .map((log) => {
+        const time = formatLogTime(log.timestamp)
+        return `[${time}] ${log.service} | ${log.content}`
+      })
+      .join("\n")
+
+    const success = await copyToClipboard(content)
+    if (success) {
+      setStatusMessage(`Copied ${logs.length} lines`)
+    } else {
+      setStatusMessage("Copy failed")
+    }
+    setTimeout(() => setStatusMessage(null), 2000)
   }
 
   // Keyboard handling
@@ -574,6 +623,18 @@ export function App(props: AppProps) {
       // Resource graph toggle
       case "m":
         setShowResourceGraph((prev) => !prev)
+        event.preventDefault()
+        break
+
+      // Copy to clipboard
+      case "y":
+        if (event.shift) {
+          // Y - copy all visible logs
+          handleCopyAllLogs()
+        } else {
+          // y - copy last log line
+          handleCopyLog()
+        }
         event.preventDefault()
         break
     }
@@ -909,6 +970,9 @@ export function App(props: AppProps) {
           <text fg="yellow">Search</text>
           <text>/ Start search | n Next match | N Prev match</text>
           <text>Esc Clear search</text>
+          <text> </text>
+          <text fg="yellow">Clipboard</text>
+          <text>y Copy last log | Y Copy all visible logs</text>
           <text> </text>
           <text fg="yellow">Config</text>
           <text>Ctrl+L Reload config from disk</text>
