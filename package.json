@@ -36,7 +36,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prettier:write": "prettier --write ."
+    "prettier:write": "prettier --write .",
+    "docs:dev": "cd docs && bun run dev",
+    "docs:build": "cd docs && bun run build",
+    "docs:preview": "cd docs && bun run preview"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

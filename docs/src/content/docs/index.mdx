@@ -1,0 +1,42 @@
+---
+title: DevProc
+description: A terminal UI application for managing your local development environment
+template: splash
+hero:
+  tagline: Hot reload servers, Docker containers, and background workers in one unified interface.
+  image:
+    file: ../../assets/screenshot.png
+  actions:
+    - text: Get Started
+      link: /devproc/getting-started/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/captjt/devproc
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components"
+
+## Features
+
+<CardGrid stagger>
+  <Card title="Unified Process Management" icon="rocket">
+    Start, stop, and restart multiple services from a single TUI. No more juggling terminal windows.
+  </Card>
+  <Card title="Dependency Ordering" icon="list-format">
+    Services start in the correct order based on dependencies. Wait for health checks before starting dependents.
+  </Card>
+  <Card title="Live Log Streaming" icon="document">
+    View logs from all services or focus on one. Search with regex, export to files, and scroll through history.
+  </Card>
+  <Card title="Resource Monitoring" icon="seti:graphql">
+    Real-time CPU and memory usage per service with sparkline graphs.
+  </Card>
+  <Card title="Docker Compose Integration" icon="seti:docker">
+    Manage Docker Compose services alongside native services with unified control.
+  </Card>
+  <Card title="Keyboard-Driven" icon="laptop">
+    Fast navigation with vim-style keybindings. Everything accessible without leaving the keyboard.
+  </Card>
+</CardGrid>

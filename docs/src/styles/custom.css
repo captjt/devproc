@@ -1,0 +1,12 @@
+/* Custom styles for DevProc docs */
+:root {
+  --sl-color-accent-low: #1a365d;
+  --sl-color-accent: #3182ce;
+  --sl-color-accent-high: #90cdf4;
+}
+
+:root[data-theme="light"] {
+  --sl-color-accent-low: #bee3f8;
+  --sl-color-accent: #3182ce;
+  --sl-color-accent-high: #1a365d;
+}
