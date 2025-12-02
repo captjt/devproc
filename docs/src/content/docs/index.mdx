@@ -3,6 +3,9 @@ title: DevProc
 description: A terminal UI application for managing your local development environment
 template: splash
 hero:
+  image:
+    file: ../../assets/devproc_logo.png
+    alt: DevProc Logo
   tagline: Hot reload servers, Docker containers, and background workers in one unified interface.
   actions:
     - text: Get Started
@@ -15,6 +18,8 @@ hero:
 ---
 
 import { Card, CardGrid } from "@astrojs/starlight/components"
+import { Image } from "astro:assets"
+import bobby from "../../assets/bobby.png"
 
 ![DevProc terminal UI](../../assets/screenshot.png)
 
@@ -40,3 +45,22 @@ import { Card, CardGrid } from "@astrojs/starlight/components"
     Fast navigation with vim-style keybindings. Everything accessible without leaving the keyboard.
   </Card>
 </CardGrid>
+
+---
+
+<div class="bobby-section">
+  <Image src={bobby} alt="Bobby - DevProc Mascot" />
+  <p>
+    <em>Meet Bobby, the DevProc mascot. He keeps your processes running smoothly.</em>
+  </p>
+</div>
+
+<style>{`
+  .bobby-section {
+    text-align: center;
+    margin-top: 2rem;
+  }
+  .bobby-section img {
+    margin: 0 auto;
+  }
+`}</style>

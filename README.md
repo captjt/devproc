@@ -1,8 +1,21 @@
-# DevProc
+<p align="center">
+  <img src="./assets/devproc_logo.png" alt="DevProc Logo" width="400">
+</p>
 
-A terminal UI application for managing your local development environment - hot reload servers, Docker containers, and background workers in one unified interface.
+<p align="center">
+  <strong>A terminal UI application for managing your local development environment</strong><br>
+  Hot reload servers, Docker containers, and background workers in one unified interface.
+</p>
 
-![DevProc Screenshot](https://raw.githubusercontent.com/captjt/devproc/master/screenshot.png)
+<p align="center">
+  <a href="https://github.com/captjt/devproc/releases"><img src="https://img.shields.io/github/v/release/captjt/devproc" alt="Release"></a>
+  <a href="https://github.com/captjt/devproc/blob/main/LICENSE"><img src="https://img.shields.io/github/license/captjt/devproc" alt="License"></a>
+  <a href="https://github.com/captjt/devproc/stargazers"><img src="https://img.shields.io/github/stars/captjt/devproc" alt="Stars"></a>
+</p>
+
+---
+
+![DevProc Screenshot](./assets/screenshot.png)
 
 ## Features
 
@@ -408,6 +421,16 @@ devproc completions fish > ~/.config/fish/completions/devproc.fish
 ## Requirements
 
 - [Bun](https://bun.sh) >= 1.0
+
+---
+
+<p align="center">
+  <img src="./assets/bobby.png" alt="Bobby - DevProc Mascot">
+</p>
+
+<p align="center">
+  <em>Meet Bobby, the DevProc mascot. He keeps your processes running smoothly.</em>
+</p>
 
 ## License
 
