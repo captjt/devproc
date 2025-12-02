@@ -4,8 +4,6 @@ description: A terminal UI application for managing your local development envir
 template: splash
 hero:
   tagline: Hot reload servers, Docker containers, and background workers in one unified interface.
-  image:
-    file: ../../assets/screenshot.png
   actions:
     - text: Get Started
       link: /devproc/getting-started/introduction/
@@ -18,9 +16,11 @@ hero:
 
 import { Card, CardGrid } from "@astrojs/starlight/components"
 
+![DevProc terminal UI](../../assets/screenshot.png)
+
 ## Features
 
-<CardGrid stagger>
+<CardGrid>
   <Card title="Unified Process Management" icon="rocket">
     Start, stop, and restart multiple services from a single TUI. No more juggling terminal windows.
   </Card>
