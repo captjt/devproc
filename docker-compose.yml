@@ -1,0 +1,44 @@
+# Example Docker Compose file for DevProc integration
+# This demonstrates how to use Docker Compose services with DevProc
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: devproc
+      POSTGRES_PASSWORD: devproc
+      POSTGRES_DB: devproc_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devproc -d devproc_dev"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  default:
+    name: devproc-network

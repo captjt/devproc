@@ -4,7 +4,7 @@ import { TextAttributes } from "@opentui/core"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import type { ProcessManager } from "./process/manager"
 import { useServices, type DisplayItem } from "./ui/hooks/useServices"
-import { useLogs, type SearchMatch } from "./ui/hooks/useLogs"
+import { useLogs } from "./ui/hooks/useLogs"
 import { formatBytes, formatCpu, generateSparkline } from "./process/resources"
 import { copyToClipboard } from "./utils/clipboard"
 
@@ -60,9 +60,7 @@ function formatLogTime(date: Date): string {
 export function App(props: AppProps) {
   const dimensions = useTerminalDimensions()
   const {
-    services,
     displayItems,
-    selectedIndex,
     selectedService,
     selectedGroup,
     selectedName,
@@ -85,7 +83,6 @@ export function App(props: AppProps) {
     clearSearch,
     isSearchActive,
     exportLogs,
-    logs,
   } = useLogs(props.manager)
 
   // Status message for reload feedback
@@ -386,7 +383,7 @@ export function App(props: AppProps) {
         event.preventDefault()
         break
 
-      case "s":
+      case "s": {
         // Start selected service
         const toStart = selectedService()
         if (toStart) {
@@ -394,6 +391,7 @@ export function App(props: AppProps) {
         }
         event.preventDefault()
         break
+      }
 
       case "x":
         if (event.shift) {
@@ -435,7 +433,7 @@ export function App(props: AppProps) {
         event.preventDefault()
         break
 
-      case "c":
+      case "c": {
         // Clear logs
         const toClear = selectedService()
         if (toClear) {
@@ -443,6 +441,7 @@ export function App(props: AppProps) {
         }
         event.preventDefault()
         break
+      }
 
       case "f":
         // Toggle follow mode
@@ -521,7 +520,7 @@ export function App(props: AppProps) {
 
       // Group operations
       case "space":
-      case " ":
+      case " ": {
         // Toggle group collapsed (if current service is in a group)
         const group = selectedGroup()
         if (group) {
@@ -529,6 +528,7 @@ export function App(props: AppProps) {
         }
         event.preventDefault()
         break
+      }
 
       case "1":
       case "2":
@@ -696,6 +696,8 @@ export function App(props: AppProps) {
                     {(() => {
                       const serviceItem = item as DisplayItem & { type: "service" }
                       const service = serviceItem.service
+                      const serviceConfig = props.manager.getServiceConfig(service.name)
+                      const isCompose = !!serviceConfig?.compose
                       const isSelected = selectedName() === service.name
                       const indent = serviceItem.group ? "  " : ""
                       const restartBadge = service.restartCount > 0 ? `↻${service.restartCount}` : ""
@@ -706,6 +708,9 @@ export function App(props: AppProps) {
                           <text>{indent}</text>
                           <text fg={STATUS_COLORS[service.status]}>{getStatusSymbol(service.status)}</text>
                           <text> </text>
+                          <Show when={isCompose}>
+                            <text fg="blue">⬡ </text>
+                          </Show>
                           <text
                             fg={isSelected ? "white" : undefined}
                             attributes={isSelected ? TextAttributes.BOLD : TextAttributes.NONE}

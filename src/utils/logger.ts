@@ -1,5 +1,3 @@
-import { join } from "path"
-
 export type LogLevel = "debug" | "info" | "warn" | "error"
 
 interface LoggerOptions {

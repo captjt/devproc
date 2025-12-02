@@ -11,6 +11,14 @@ export interface NormalizedHealthcheck {
   retries: number
 }
 
+// Docker Compose configuration for a service
+export interface ComposeConfig {
+  /** The compose service name (may differ from devproc service name) */
+  serviceName: string
+  /** Path to the docker-compose file */
+  file: string
+}
+
 // Normalized service config (after processing)
 export interface NormalizedService {
   name: string
@@ -23,6 +31,7 @@ export interface NormalizedService {
   color?: string
   stopSignal: NodeJS.Signals
   group?: string // Group this service belongs to (if any)
+  compose?: ComposeConfig // Docker Compose integration
 }
 
 // Group definition
@@ -39,6 +48,7 @@ export interface NormalizedConfig {
   services: Map<string, NormalizedService>
   groups: Map<string, ServiceGroup>
   configPath: string // Store path for reload functionality
+  composePath?: string // Path to docker-compose file (if any compose services)
 }
 
 // Utility to parse duration strings like "2s", "500ms", "1m"

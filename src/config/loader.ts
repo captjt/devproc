@@ -1,6 +1,6 @@
 import { parse as parseYaml } from "yaml"
 import { join, dirname, resolve } from "path"
-import { ConfigSchema, type ServiceConfig, type HealthcheckConfig } from "./schema"
+import { ConfigSchema, type ServiceConfig } from "./schema"
 import {
   type NormalizedConfig,
   type NormalizedService,
@@ -99,10 +99,13 @@ export async function loadConfig(configPath?: string): Promise<NormalizedConfig>
     }
   }
 
+  // Determine compose file path if any services use compose
+  const composePath = config.compose
+
   // Normalize all services
   const services = new Map<string, NormalizedService>()
   for (const [name, serviceConfig] of Object.entries(config.services)) {
-    const normalized = normalizeService(name, serviceConfig, configDir, globalEnv)
+    const normalized = normalizeService(name, serviceConfig, configDir, globalEnv, composePath)
     normalized.group = serviceToGroup.get(name)
     services.set(name, normalized)
   }
@@ -119,12 +122,16 @@ export async function loadConfig(configPath?: string): Promise<NormalizedConfig>
   // Check for circular dependencies
   validateNoCycles(services)
 
+  // Check if any services use compose
+  const hasComposeServices = Array.from(services.values()).some((s) => s.compose)
+
   return {
     name: config.name,
     env: globalEnv,
     services,
     groups,
     configPath: resolvedPath,
+    composePath: hasComposeServices ? resolve(configDir, composePath || "docker-compose.yml") : undefined,
   }
 }
 
@@ -171,6 +178,7 @@ function normalizeService(
   config: ServiceConfig,
   configDir: string,
   globalEnv: Record<string, string>,
+  composePath?: string,
 ): NormalizedService {
   // Parse depends_on into a Map
   const dependsOn = new Map<string, "started" | "healthy">()
@@ -185,6 +193,25 @@ function normalizeService(
       for (const [dep, condition] of Object.entries(config.depends_on)) {
         dependsOn.set(dep, condition)
       }
+    }
+  }
+
+  // Handle compose services
+  let composeConfig: NormalizedService["compose"] | undefined
+  let cmd = config.cmd || ""
+
+  if (config.compose) {
+    const composeFile = composePath || "docker-compose.yml"
+    const composeServiceName = typeof config.compose === "string" ? config.compose : name
+
+    composeConfig = {
+      serviceName: composeServiceName,
+      file: resolve(configDir, composeFile),
+    }
+
+    // Generate the docker compose command if no cmd specified
+    if (!config.cmd) {
+      cmd = `docker compose -f "${composeConfig.file}" up ${composeServiceName}`
     }
   }
 
@@ -207,6 +234,14 @@ function normalizeService(
         retries: config.healthcheck.retries,
       }
     }
+  } else if (composeConfig) {
+    // Default healthcheck for compose services: check if container is running
+    healthcheck = {
+      cmd: `docker compose -f "${composeConfig.file}" ps ${composeConfig.serviceName} --status=running --quiet`,
+      intervalMs: 2000,
+      timeoutMs: 5000,
+      retries: 30,
+    }
   }
 
   // Parse stop signal
@@ -214,7 +249,7 @@ function normalizeService(
 
   return {
     name,
-    cmd: config.cmd,
+    cmd,
     cwd: config.cwd ? resolve(configDir, config.cwd) : configDir,
     env: {
       ...globalEnv,
@@ -225,6 +260,7 @@ function normalizeService(
     restart: config.restart,
     color: config.color,
     stopSignal,
+    compose: composeConfig,
   }
 }
 

@@ -101,7 +101,7 @@ async function buildAll() {
 
       // Remove the raw binary, keep only tarball
       await rm(binaryPath, { force: true })
-    } catch (error) {
+    } catch {
       console.error(`Skipping ${target.name} due to error`)
     }
   }

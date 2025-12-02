@@ -153,11 +153,62 @@ services:
     color: cyan
 ```
 
+### Docker Compose Integration
+
+DevProc can manage Docker Compose services alongside native services, giving you unified control over your entire development stack.
+
+```yaml
+name: my-project
+
+# Path to docker-compose file (default: docker-compose.yml)
+compose: docker-compose.yml
+
+groups:
+  infrastructure:
+    - postgres
+    - redis
+  backend:
+    - api
+
+services:
+  # Docker Compose services - just add compose: true
+  postgres:
+    compose: true # Uses service name from devproc
+    # Optional: custom healthcheck (default checks if container is running)
+    healthcheck:
+      cmd: pg_isready -h localhost -p 5432
+
+  redis:
+    compose: redis # Or specify a different compose service name
+
+  # Native services work alongside compose services
+  api:
+    cmd: npm run dev
+    depends_on:
+      postgres: healthy
+      redis: healthy
+```
+
+The `compose` option can be:
+
+- `true` - Use the devproc service name as the compose service name
+- `string` - Specify a different compose service name
+
+DevProc will:
+
+- Start compose services with `docker compose up <service>`
+- Stop them with `docker compose stop <service>`
+- Stream logs from the container
+- Auto-generate healthchecks to verify the container is running
+
+Compose services are indicated with a ⬡ symbol in the UI.
+
 ### Service Options
 
 | Option        | Type          | Description                                                    |
 | ------------- | ------------- | -------------------------------------------------------------- |
-| `cmd`         | string        | Command to run (required)                                      |
+| `cmd`         | string        | Command to run (required unless `compose` is set)              |
+| `compose`     | bool/string   | Docker Compose service (true or service name)                  |
 | `cwd`         | string        | Working directory                                              |
 | `env`         | object        | Environment variables                                          |
 | `depends_on`  | array/object  | Service dependencies                                           |

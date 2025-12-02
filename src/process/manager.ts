@@ -9,10 +9,9 @@ import {
   type StopOptions,
   createInitialState,
   isRunning,
-  canStart,
   canStop,
 } from "./types"
-import { spawnService, processStreams, stopProcess } from "./spawner"
+import { spawnService, processStreams, stopProcess, stopComposeService } from "./spawner"
 import { waitForHealthy, createHealthcheckPoller } from "./healthcheck"
 import { ResourceMonitor, type ResourceStats, type ResourceDataPoint } from "./resources"
 
@@ -374,7 +373,14 @@ export class ProcessManager extends EventEmitter<ProcessManagerEvents> {
     const signal = options.signal || serviceConfig?.stopSignal || "SIGTERM"
     const timeout = options.timeout ?? 10000
 
-    await stopProcess(managed.process, signal, timeout)
+    // Use compose stop for compose services
+    if (serviceConfig?.compose) {
+      await stopComposeService(serviceConfig.compose, timeout)
+      // Also kill the docker compose up process
+      await stopProcess(managed.process, signal, timeout)
+    } else {
+      await stopProcess(managed.process, signal, timeout)
+    }
   }
 
   /**

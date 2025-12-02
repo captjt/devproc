@@ -1,4 +1,4 @@
-import { createSignal, createMemo, onCleanup, onMount } from "solid-js"
+import { createSignal, onCleanup, onMount } from "solid-js"
 import type { LogLine } from "../../process/types"
 import type { ProcessManager } from "../../process/manager"
 

@@ -7,6 +7,9 @@ name: example-project
 env:
   NODE_ENV: development
 
+# Docker Compose file path (optional, defaults to docker-compose.yml)
+# compose: docker-compose.yml
+
 # Service groups - organize related services together
 groups:
   core:
@@ -15,6 +18,10 @@ groups:
   monitoring:
     - logger
     - metrics
+  # To use Docker Compose integration
+  infrastructure:
+    - postgres
+    - redis
 
 # Example services for a typical full-stack application
 services:
@@ -39,42 +46,39 @@ services:
   metrics:
     cmd: 'bash -c ''while true; do echo "Memory: $((RANDOM % 100))% CPU: $((RANDOM % 100))%"; sleep 5; done'''
     color: magenta
-# Example with Docker (commented out - uncomment if you have Docker)
-# postgres:
-#   cmd: docker run --rm --name devproc-pg -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:16
-#   healthcheck:
-#     cmd: pg_isready -h localhost -p 5432
-#     interval: 2s
-#     timeout: 5s
-#     retries: 30
-#   stop_signal: SIGTERM
 
-# redis:
-#   cmd: docker run --rm --name devproc-redis -p 6379:6379 redis:7
-#   healthcheck:
-#     cmd: redis-cli ping
+  # =====================================================
+  # Docker Compose Integration Examples
+  # Uncomment the services below to use with docker-compose.yml
+  # =====================================================
 
-# api:
-#   cmd: air
-#   cwd: ./services/api
-#   depends_on:
-#     postgres: healthy
-#     redis: healthy
-#   env:
-#     DATABASE_URL: postgres://postgres:dev@localhost:5432/myapp
-#     REDIS_URL: redis://localhost:6379
-#   color: green
+  # PostgreSQL via Docker Compose
+  # The 'compose: true' flag tells DevProc to manage this service
+  # using 'docker compose up/stop' commands
+  postgres:
+    compose: true
+    # Healthcheck runs inside the container using docker compose exec
+    healthcheck:
+      cmd: docker compose exec -T postgres pg_isready -U devproc -d devproc_dev
+      interval: 2s
+      retries: 30
 
-# worker:
-#   cmd: go run ./cmd/worker
-#   cwd: ./services/api
-#   depends_on:
-#     - api
-#   restart: on-failure
+  # Redis via Docker Compose
+  redis:
+    compose: true
+    # Healthcheck runs inside the container using docker compose exec
+    healthcheck:
+      cmd: docker compose exec -T redis redis-cli ping
+      interval: 2s
+      retries: 15
 
-# web:
-#   cmd: bun run dev
-#   cwd: ./apps/web
-#   depends_on:
-#     - api
-#   color: cyan
+  # Example API service that depends on compose services
+  # api:
+  #   cmd: npm run dev
+  #   depends_on:
+  #     postgres: healthy
+  #     redis: healthy
+  #   env:
+  #     DATABASE_URL: postgres://devproc:devproc@localhost:5432/devproc_dev
+  #     REDIS_URL: redis://localhost:6379
+  #   color: green

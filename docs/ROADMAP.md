@@ -16,6 +16,7 @@ This document outlines planned features and improvements for DevProc, organized 
 - [x] Animated spinners for starting/stopping
 - [x] Restart count badges
 - [x] Resource monitoring (CPU/memory per service)
+- [x] Docker Compose integration (`compose: true`)
 
 ---
 
@@ -292,6 +293,7 @@ Want to help build these features? Here's how:
 - Added `devproc validate` command to check config for errors
 - Added clipboard support (`y` to copy last log, `Y` to copy all visible logs)
 - Added shell completions for bash, zsh, and fish (`devproc completions <shell>`)
+- Added Docker Compose integration (`compose: true` on services)
 
 ### v0.4.0
 

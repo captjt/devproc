@@ -1,6 +1,7 @@
 /**
  * Shell completion scripts for devproc
  */
+/* eslint-disable no-useless-escape */
 
 const COMMANDS = ["up", "down", "restart", "status", "init", "validate", "completions"]
 const OPTIONS = ["-c", "--config", "-w", "--watch", "-h", "--help", "-v", "--version"]

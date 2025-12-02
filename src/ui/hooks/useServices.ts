@@ -1,7 +1,7 @@
 import { createSignal, onCleanup, onMount } from "solid-js"
 import type { ServiceState } from "../../process/types"
 import type { ProcessManager } from "../../process/manager"
-import type { ServiceGroup, NormalizedService } from "../../config/types"
+import type { ServiceGroup } from "../../config/types"
 
 // A display item can be either a group header or a service
 export type DisplayItem =

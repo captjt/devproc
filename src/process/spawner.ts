@@ -1,11 +1,12 @@
 import { spawn, type Subprocess } from "bun"
-import type { NormalizedService } from "../config/types"
+import type { NormalizedService, ComposeConfig } from "../config/types"
 import type { LogLine } from "./types"
 
 export interface SpawnResult {
   process: Subprocess
   stdoutReader: AsyncIterable<string>
   stderrReader: AsyncIterable<string>
+  compose?: ComposeConfig
 }
 
 /**
@@ -49,8 +50,8 @@ function parseCommand(cmd: string): string[] {
  */
 async function* readLines(
   stream: ReadableStream<Uint8Array> | null,
-  service: string,
-  streamType: "stdout" | "stderr",
+  _service: string,
+  _streamType: "stdout" | "stderr",
 ): AsyncIterable<string> {
   if (!stream) return
 
@@ -108,6 +109,7 @@ export function spawnService(config: NormalizedService): SpawnResult {
     process: proc,
     stdoutReader: readLines(proc.stdout, config.name, "stdout"),
     stderrReader: readLines(proc.stderr, config.name, "stderr"),
+    compose: config.compose,
   }
 }
 
@@ -163,4 +165,29 @@ export async function stopProcess(
   }
 
   return result
+}
+
+/**
+ * Stop a Docker Compose service
+ */
+export async function stopComposeService(compose: ComposeConfig, timeoutMs: number = 10000): Promise<void> {
+  const proc = spawn({
+    cmd: ["docker", "compose", "-f", compose.file, "stop", compose.serviceName],
+    stdout: "pipe",
+    stderr: "pipe",
+  })
+
+  const timeoutPromise = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), timeoutMs))
+
+  const result = await Promise.race([proc.exited, timeoutPromise])
+
+  if (result === "timeout") {
+    // Force kill the container
+    const killProc = spawn({
+      cmd: ["docker", "compose", "-f", compose.file, "kill", compose.serviceName],
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    await killProc.exited
+  }
 }
