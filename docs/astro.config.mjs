@@ -10,6 +10,7 @@ export default defineConfig({
     starlight({
       title: "DevProc",
       description: "A terminal UI application for managing your local development environment",
+      favicon: "/favicon.png",
       social: {
         github: "https://github.com/captjt/devproc",
       },

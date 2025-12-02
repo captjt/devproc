@@ -15,7 +15,7 @@
 
 ---
 
-![DevProc Screenshot](./assets/screenshot.png)
+![DevProc Demo](./assets/demo.gif)
 
 ## Features
 
