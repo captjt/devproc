@@ -1,12 +1,321 @@
-/* Custom styles for DevProc docs */
-:root {
-  --sl-color-accent-low: #1a365d;
-  --sl-color-accent: #3182ce;
-  --sl-color-accent-high: #90cdf4;
+/* Custom styles for DevProc docs - 90s Retro Video Game Vibes */
+/* Dark mode only - the retro CRT aesthetic requires darkness */
+
+/* Import a retro pixel font */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap");
+
+/* Force dark mode always */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Neon arcade colors */
+  --sl-color-accent-low: #1a0a2e;
+  --sl-color-accent: #ff00ff;
+  --sl-color-accent-high: #00ffff;
+
+  /* Dark CRT-style background */
+  --sl-color-bg: #0a0a0a;
+  --sl-color-bg-nav: #0d0d1a;
+  --sl-color-bg-sidebar: #0d0d1a;
+  --sl-color-bg-inline-code: #1a1a2e;
+
+  /* Retro text colors */
+  --sl-color-text: #00ff00;
+  --sl-color-text-accent: #ff00ff;
+
+  /* Neon borders */
+  --sl-color-hairline: #ff00ff;
+  --sl-color-hairline-light: #00ffff33;
+
+  /* Force dark theme colors */
+  --sl-color-white: #00ffff;
+  --sl-color-gray-1: #e0e0e0;
+  --sl-color-gray-2: #c0c0c0;
+  --sl-color-gray-3: #808080;
+  --sl-color-gray-4: #404040;
+  --sl-color-gray-5: #202020;
+  --sl-color-gray-6: #101010;
+  --sl-color-black: #0a0a0a;
 }
 
-:root[data-theme="light"] {
-  --sl-color-accent-low: #bee3f8;
-  --sl-color-accent: #3182ce;
-  --sl-color-accent-high: #1a365d;
+/* Hide the theme toggle since we only support dark */
+starlight-theme-select,
+[data-select-theme] {
+  display: none !important;
+}
+
+/* Retro pixel font for headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.site-title {
+  font-family: "Press Start 2P", monospace !important;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow:
+    3px 3px 0px #ff00ff,
+    -1px -1px 0px #00ffff;
+}
+
+/* VT323 for body text - readable but retro */
+body,
+p,
+li,
+a,
+span,
+.sl-markdown-content {
+  font-family: "VT323", monospace !important;
+  font-size: 1.2rem;
+  letter-spacing: 0.5px;
+}
+
+/* Scanline effect overlay */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  z-index: 9999;
+}
+
+/* CRT screen glow effect */
+body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+  z-index: 9998;
+}
+
+/* Neon glow on links */
+a {
+  color: #00ffff !important;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+a:hover {
+  color: #ff00ff !important;
+  text-shadow:
+    0 0 5px #ff00ff,
+    0 0 10px #ff00ff,
+    0 0 20px #ff00ff;
+}
+
+/* Retro button styles */
+button,
+.sl-button,
+[data-scope="button"] {
+  font-family: "Press Start 2P", monospace !important;
+  font-size: 0.7rem;
+  background: linear-gradient(180deg, #ff00ff 0%, #6b0080 100%);
+  border: 3px solid #00ffff;
+  box-shadow:
+    4px 4px 0px #000,
+    0 0 10px #ff00ff;
+  text-transform: uppercase;
+  transition: all 0.1s ease;
+}
+
+button:hover,
+.sl-button:hover {
+  transform: translate(2px, 2px);
+  box-shadow:
+    2px 2px 0px #000,
+    0 0 20px #00ffff;
+}
+
+/* Code blocks with retro terminal feel */
+pre,
+code {
+  font-family: "VT323", monospace !important;
+  font-size: 1.3rem !important;
+  line-height: 1.5 !important;
+  background: #0a0a0a !important;
+  border: 2px solid #00ff00 !important;
+  box-shadow:
+    inset 0 0 10px rgba(0, 255, 0, 0.2),
+    0 0 5px rgba(0, 255, 0, 0.3);
+}
+
+code {
+  color: #00ff00 !important;
+}
+
+/* Pixelated borders for cards/panels - exclude tables and their wrappers */
+.card,
+article {
+  border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='2' height='2' fill='%23ff00ff'/%3E%3Crect x='2' width='2' height='2' fill='%2300ffff'/%3E%3Crect x='4' width='2' height='2' fill='%23ff00ff'/%3E%3Crect y='2' width='2' height='2' fill='%2300ffff'/%3E%3Crect x='2' y='2' width='2' height='2' fill='transparent'/%3E%3Crect x='4' y='2' width='2' height='2' fill='%2300ffff'/%3E%3Crect y='4' width='2' height='2' fill='%23ff00ff'/%3E%3Crect x='2' y='4' width='2' height='2' fill='%2300ffff'/%3E%3Crect x='4' y='4' width='2' height='2' fill='%23ff00ff'/%3E%3C/svg%3E")
+    2 round;
+}
+
+/* Sidebar styling */
+nav.sidebar {
+  border-right: 3px solid #ff00ff;
+  box-shadow: 2px 0 10px rgba(255, 0, 255, 0.3);
+}
+
+/* Selection highlight */
+::selection {
+  background: #ff00ff;
+  color: #000;
+}
+
+/* Animated title glow */
+.site-title {
+  animation: neonPulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes neonPulse {
+  from {
+    text-shadow:
+      0 0 5px #ff00ff,
+      0 0 10px #ff00ff,
+      0 0 20px #ff00ff,
+      3px 3px 0px #00ffff;
+  }
+  to {
+    text-shadow:
+      0 0 10px #00ffff,
+      0 0 20px #00ffff,
+      0 0 40px #00ffff,
+      3px 3px 0px #ff00ff;
+  }
+}
+
+/* Blinking cursor effect for headings */
+h1::after {
+  content: "_";
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Star field background */
+.main-frame,
+main {
+  background:
+    radial-gradient(white 1px, transparent 1px), radial-gradient(white 1px, transparent 1px),
+    linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 100%);
+  background-size:
+    100px 100px,
+    50px 50px,
+    100% 100%;
+  background-position:
+    0 0,
+    25px 25px,
+    0 0;
+}
+
+/* Retro scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a2e;
+  border: 2px solid #ff00ff;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ff00ff, #00ffff);
+  border: 2px solid #000;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #00ffff, #ff00ff);
+}
+
+/* Table styling */
+table {
+  border: 3px solid #00ffff !important;
+  border-collapse: collapse !important;
+  border-image: none !important;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+  width: 100% !important;
+  margin: 1.5rem 0 !important;
+  display: table !important;
+  table-layout: auto !important;
+}
+
+/* Reset any wrapper div issues */
+.sl-markdown-content > div:has(table),
+.sl-markdown-content table {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  border-image: none !important;
+}
+
+th {
+  background: linear-gradient(180deg, #ff00ff, #6b0080) !important;
+  font-family: "VT323", monospace !important;
+  font-size: 1.2rem !important;
+  text-transform: uppercase;
+  padding: 0.75rem 1rem !important;
+  text-align: left !important;
+  color: #fff !important;
+  border-bottom: 2px solid #00ffff !important;
+}
+
+td {
+  font-family: "VT323", monospace !important;
+  font-size: 1.2rem !important;
+  padding: 0.6rem 1rem !important;
+  border-bottom: 1px solid #ff00ff44 !important;
+  color: #00ff00 !important;
+}
+
+/* Inline code in tables */
+td code {
+  background: #1a1a2e !important;
+  border: 1px solid #00ffff !important;
+  padding: 0.15rem 0.4rem !important;
+  font-size: 1.1rem !important;
+  color: #00ffff !important;
+}
+
+tr:hover {
+  background: rgba(255, 0, 255, 0.15) !important;
+}
+
+tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Search input styling */
+input,
+[type="search"] {
+  background: #0a0a0a !important;
+  color: #00ff00 !important;
+  border: 2px solid #00ffff !important;
+  font-family: "VT323", monospace !important;
+}
+
+input::placeholder {
+  color: #00ff0088 !important;
 }
